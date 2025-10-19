@@ -1,18 +1,33 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { auth } from "../utils/firebase";
+import { auth, db } from "../utils/firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
+import { collection, query, orderBy, onSnapshot, doc, getDoc } from "firebase/firestore";
 
+/* NOTE: Navbar reads top 3 admin announcements and site meta for whatsapp link.
+   Admin can edit WhatsApp link in admin page (saves to meta/site doc). */
 export default function Navbar() {
   const [user, setUser] = useState(null);
+  const [ann, setAnn] = useState([]);
+  const [whats, setWhats] = useState("https://wa.me/2348082591190");
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, u => setUser(u));
-    return unsub;
+    const unsubAuth = onAuthStateChanged(auth, u => setUser(u));
+    const q = query(collection(db,"announcements"), orderBy("createdAt","desc"));
+    const unsubAnn = onSnapshot(q, snap => setAnn(snap.docs.map(d => ({id:d.id, ...d.data()})).slice(0,3)));
+
+    (async () => {
+      try {
+        const md = await getDoc(doc(db,"meta","site"));
+        if(md.exists()) setWhats(md.data().whatsappLink || whats);
+      } catch(e){}
+    })();
+
+    return () => { unsubAuth(); unsubAnn(); };
   }, []);
 
   return (
-    <header className="w-full max-w-5xl mx-auto p-4 flex items-center justify-between z-20">
+    <header className="w-full max-w-6xl mx-auto p-4 flex items-center justify-between z-20">
       <div className="flex items-center gap-4">
         <div className="logo-box">
           <img src="/logo.png" alt="logo" width={48} height={48} style={{borderRadius:8}} />
@@ -23,17 +38,22 @@ export default function Navbar() {
         </div>
       </div>
 
-      <nav className="flex items-center gap-3">
-        <Link href="/"><a className="text-sm">Home</a></Link>
-        <Link href="/chat"><a className="text-sm">Chat</a></Link>
-        <Link href="/members"><a className="text-sm">Members</a></Link>
-        <a className="btn-accent" href="https://wa.me/2348082591190" target="_blank" rel="noreferrer">Contact Admin</a>
+      <div className="flex items-center gap-3">
+        <div className="hidden md:flex gap-2">
+          {ann.map(a => <div key={a.id} className="text-sm bg-[#330033] px-3 py-1 rounded">{a.text}</div>)}
+        </div>
+
+        <a className="btn-accent" href={whats} target="_blank" rel="noreferrer">Join WhatsApp</a>
+
         {user ? (
-          <button className="ml-2 px-3 py-1 rounded bg-[#330033]" onClick={() => signOut(auth)}>Logout</button>
+          <>
+            <span className="text-sm ml-2">{user.displayName || (user.email && user.email.split("@")[0])}</span>
+            <button className="ml-2 px-3 py-1 rounded bg-[#330033]" onClick={() => signOut(auth)}>Logout</button>
+          </>
         ) : (
           <Link href="/"><a className="ml-2 px-3 py-1 rounded bg-[#330033]">Login</a></Link>
         )}
-      </nav>
+      </div>
     </header>
   );
   }
