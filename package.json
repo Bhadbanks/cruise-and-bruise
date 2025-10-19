@@ -1,24 +1,23 @@
 {
-  "name": "cruise-bruise",
+  "name": "cruise-and-bruise",
   "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start"
   },
   "dependencies": {
+    "firebase": "^10.11.0",
+    "framer-motion": "^10.12.16",
     "next": "15.5.6",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "firebase": "^10.11.0",
-    "framer-motion": "^10.12.16",
     "react-icons": "^4.11.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.15",
-    "postcss": "^8.4.27",
+    "postcss": "^8.4.25",
     "tailwindcss": "^3.3.3"
   }
 }
