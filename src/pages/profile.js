@@ -1,54 +1,38 @@
-import { useState, useEffect } from "react";
-import { auth, db, storage } from "../utils/firebase";
-import { useRouter } from "next/router";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { doc, setDoc } from "firebase/firestore";
-import { generateAvatar } from "../utils/avatars";
+import Navbar from "../components/Navbar";
+import UserProfileForm from "../components/UserProfileForm";
+import { useEffect, useState } from "react";
+import { auth, db } from "../utils/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
-export default function Profile() {
-  const router = useRouter();
-  const [userData, setUserData] = useState({
-    username: "",
-    age: "",
-    bio: "",
-    location: "",
-    hobby: "",
-    sex: "",
-    relationship: "",
-    avatar: ""
-  });
-  const [file, setFile] = useState(null);
-
-  useEffect(() => {
-    if (!auth.currentUser) router.push("/");
-  }, []);
-
-  const handleSubmit = async () => {
-    if(userData.age < 16) return alert("You must be 16 or older to register.");
-    let avatarUrl = file ? await uploadFile(file) : generateAvatar(userData.username);
-    await setDoc(doc(db, "users", auth.currentUser.uid), {...userData, avatar: avatarUrl});
-    router.push("/chat");
-  };
-
-  const uploadFile = async (file) => {
-    const storageRef = ref(storage, `avatars/${auth.currentUser.uid}`);
-    await uploadBytes(storageRef, file);
-    return await getDownloadURL(storageRef);
-  };
-
+export default function Profile(){
+  const [user, setUser] = useState(null);
+  useEffect(()=>{
+    const unsub = onAuthStateChanged(auth, async u => {
+      if(!u) { setUser(null); return; }
+      const snap = await getDoc(doc(db,"users",u.uid));
+      setUser(snap.exists() ? snap.data() : null);
+    });
+    return unsub;
+  },[]);
   return (
-    <div className="flex flex-col items-center gap-4 p-4">
-      <h1 className="text-3xl font-bold">Complete Your Profile</h1>
-      {["username","age","bio","location","hobby","sex","relationship"].map((f)=>(
-        <input key={f} placeholder={f.charAt(0).toUpperCase()+f.slice(1)}
-          value={userData[f]}
-          onChange={e=>setUserData({...userData,[f]: e.target.value})}
-          className="p-2 rounded w-80"
-          type={f==="age"?"number":"text"}
-        />
-      ))}
-      <input type="file" onChange={e=>setFile(e.target.files[0])}/>
-      <button onClick={handleSubmit} className="bg-primary px-6 py-2 rounded hover:bg-accent">Save Profile</button>
+    <div>
+      <Navbar />
+      <main className="max-w-4xl mx-auto p-6">
+        {!user ? <UserProfileForm /> : (
+          <div className="card">
+            <h2 className="text-xl font-bold">Your Profile</h2>
+            <div className="flex gap-4 items-center mt-4">
+              <img src={user.photoURL} className="avatar" alt="avatar"/>
+              <div>
+                <div className="font-bold text-lg">{user.username}</div>
+                <div className="text-sm opacity-80">Age: {user.age}</div>
+                <div className="mt-2">{user.bio}</div>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
-                 }
+          }
