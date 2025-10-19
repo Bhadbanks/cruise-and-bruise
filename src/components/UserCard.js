@@ -8,4 +8,4 @@ export default function UserCard({ user }) {
       <p className="text-xs">{user.hobby} • {user.sex} • {user.relationshipStatus}</p>
     </div>
   )
-  }
+}
