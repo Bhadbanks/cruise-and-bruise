@@ -5,5 +5,4 @@ const nextConfig = {
     domains: ["avatars.dicebear.com"]
   }
 };
-
 module.exports = nextConfig;
