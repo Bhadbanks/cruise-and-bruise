@@ -6,58 +6,56 @@
 body {
   @apply bg-gradient-bg text-white min-h-screen font-sans;
   background-size: 400% 400%;
-  animation: gradientShift 15s ease infinite;
+  animation: gradientMove 15s ease infinite;
 }
 
-/* Input & Textarea styling */
-input, textarea {
-  @apply bg-secondary text-white p-2 rounded w-full border border-[#330033] focus:outline-none focus:ring-2 focus:ring-accent;
-}
-
-/* Button styling */
-button {
-  @apply rounded px-6 py-2 bg-primary hover:bg-accent text-white font-semibold cursor-pointer;
-  transition: all 0.3s ease-in-out;
-}
-
-/* Chat box styling */
-.chat-box {
-  @apply bg-[#220022] p-2 rounded shadow-md overflow-y-scroll;
-}
-
-/* Announcement styling */
-.announcement {
-  @apply bg-[#330033] text-yellow-300 font-bold p-1 rounded my-1;
-}
-
-/* Floating animation for icons/images */
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-}
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-/* Pulsing animation for buttons/alerts */
-.animate-pulseSlow {
-  animation: pulse 3s ease-in-out infinite;
-}
-
-/* Gradient background shift for subtle movement */
-@keyframes gradientShift {
+/* Smooth gradient animation */
+@keyframes gradientMove {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
 
-/* Scrollbar customization for chat */
-::-webkit-scrollbar {
-  width: 6px;
+/* Input fields styling */
+input, textarea {
+  @apply bg-secondary text-white rounded p-2 w-full focus:outline-none focus:ring-2 focus:ring-accent;
 }
-::-webkit-scrollbar-thumb {
-  @apply bg-accent rounded;
+
+/* Buttons styling */
+button {
+  @apply bg-primary text-white font-bold px-6 py-2 rounded hover:bg-accent transition-all duration-300;
 }
-::-webkit-scrollbar-track {
-  @apply bg-secondary;
+
+/* Chat bubbles */
+.chat-message {
+  @apply bg-[#220022] p-2 rounded my-1;
+}
+
+.admin-announcement {
+  @apply bg-[#330033] p-2 rounded font-bold text-yellow-300;
+}
+
+/* Profile cards */
+.profile-card {
+  @apply bg-[#220022] p-4 rounded shadow-lg flex flex-col items-center;
+}
+
+/* Subtle floating animation for icons/images */
+.float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Slow pulsating effect for buttons or notifications */
+.pulse-slow {
+  @apply animate-pulseSlow;
+}
+
+@keyframes pulseSlow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
