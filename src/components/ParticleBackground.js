@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 
-const EMOJIS = ["🌹","😹","💬","💔","⚡️","🌚","✨","🔥","🎉","🌊","💫"];
+/* NOTE: ParticleBackground - creates floating emoji particles.
+   They spawn at bottom of screen and float higher before disappearing.
+   You can change EMOJIS or spawn rate below. */
+const EMOJIS = ["🌹","😹","💬","💔","✨","🔥","🎉","🌊","💫"];
 
 export default function ParticleBackground() {
   useEffect(() => {
@@ -8,22 +11,20 @@ export default function ParticleBackground() {
     container.className = "particles";
     document.body.appendChild(container);
 
-    let interval = setInterval(() => {
+    const spawn = () => {
       const el = document.createElement("div");
       el.className = "particle";
       el.style.left = Math.random() * 100 + "%";
-      el.style.fontSize = 12 + Math.random() * 26 + "px";
-      el.style.animationDuration = 6 + Math.random() * 8 + "s";
-      el.style.top = 85 + Math.random() * 15 + "%";
+      el.style.fontSize = 14 + Math.random() * 34 + "px";
+      el.style.animationDuration = 8 + Math.random() * 12 + "s"; // float longer
+      el.style.top = 92 + Math.random() * 6 + "%"; // start lower (near bottom)
       el.textContent = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
       container.appendChild(el);
-      setTimeout(() => el.remove(), 16000);
-    }, 700);
-
-    return () => {
-      clearInterval(interval);
-      container.remove();
+      setTimeout(() => el.remove(), 30000);
     };
+
+    const iv = setInterval(spawn, 550);
+    return () => { clearInterval(iv); container.remove(); };
   }, []);
 
   return null;
