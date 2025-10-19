@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 body {
-  @apply bg-gradient-to-br from-[#110011] via-[#220022] to-[#330033] text-white font-sans min-h-screen;
+  @apply bg-gradient-to-br from-bgDark via-[#220022] to-[#330033] text-white font-sans min-h-screen overflow-x-hidden;
   background-size: 400% 400%;
   animation: gradientMove 15s ease infinite;
 }
@@ -14,7 +14,7 @@ body {
   100% { background-position: 0% 50%; }
 }
 
-input, textarea {
+input, textarea, select {
   @apply bg-secondary text-white rounded p-2 w-full mb-4 focus:outline-none focus:ring-2 focus:ring-accent;
 }
 
@@ -28,3 +28,4 @@ button {
 .chat-message { @apply bg-[#220022] p-2 rounded my-1; }
 .admin-announcement { @apply bg-[#330033] p-2 rounded font-bold text-yellow-300; }
 .profile-card { @apply bg-[#220022] p-4 rounded shadow-lg flex flex-col items-center; }
+.marquee { animation: marquee 15s linear infinite; white-space: nowrap; }
