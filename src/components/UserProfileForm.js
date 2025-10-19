@@ -24,7 +24,6 @@ export default function UserProfileForm({ onComplete }) {
         await uploadBytes(storageRef, file);
         photoURL = await getDownloadURL(storageRef);
       } else {
-        // Generate random avatar URL based on username
         const seed = encodeURIComponent(form.username || auth.currentUser.email);
         photoURL = `https://avatars.dicebear.com/api/identicon/${seed}.svg`;
       }
@@ -35,6 +34,40 @@ export default function UserProfileForm({ onComplete }) {
         email: auth.currentUser.email
       });
 
+      onComplete();
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  return (
+    <div className="bg-[#220022] p-6 rounded-xl w-full max-w-md shadow-lg">
+      <h2 className="text-xl mb-4">Complete Your Profile</h2>
+      {error && <p className="text-red-500 mb-2">{error}</p>}
+      <form onSubmit={handleSubmit} className="flex flex-col">
+        <input name="username" placeholder="Username" value={form.username} onChange={handleChange} required />
+        <input name="bio" placeholder="Bio" value={form.bio} onChange={handleChange} />
+        <input name="location" placeholder="Location" value={form.location} onChange={handleChange} />
+        <input name="age" type="number" placeholder="Age" value={form.age} onChange={handleChange} required />
+        <input name="hobby" placeholder="Hobby" value={form.hobby} onChange={handleChange} />
+        <select name="sex" value={form.sex} onChange={handleChange} required>
+          <option value="">Select Sex</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+        <select name="relationshipStatus" value={form.relationshipStatus} onChange={handleChange}>
+          <option value="">Relationship Status</option>
+          <option value="Single">Single</option>
+          <option value="In a Relationship">In a Relationship</option>
+          <option value="Complicated">Complicated</option>
+        </select>
+        <input type="file" onChange={e=>setFile(e.target.files[0])} className="mb-2"/>
+        <button type="submit" className="mt-2">Save Profile</button>
+      </form>
+    </div>
+  )
+      }
       onComplete();
     } catch (err) {
       setError(err.message);
