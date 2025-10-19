@@ -2,24 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Base theme */
-:root{
+/* Premium animated gradient background */
+body, html, #__next { height:100%; }
+:root {
   --accent1: #ff7eb3;
   --accent2: #7afcff;
   --muted: #d7cfe2;
-  --card: rgba(255,255,255,0.03);
 }
-html,body,#__next { height:100%; }
 body {
-  @apply bg-gradient-to-br from-bgA to-bgB text-white antialiased;
-  background-size: 400% 400%;
-  animation: bgMove 18s ease infinite;
+  background: linear-gradient(135deg, rgba(11,16,38,0.96), rgba(44,15,66,0.95));
+  background-size: 300% 300%;
+  animation: gradient 12s ease infinite;
+  color: white;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Poppins", sans-serif;
+  -webkit-font-smoothing:antialiased;
 }
-@keyframes bgMove {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+
+/* cards & inputs */
+.card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.03);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+}
+.input {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 10px;
+  border-radius: 10px;
+  color: white;
+  outline: none;
+}
+.input::placeholder { color: rgba(255,255,255,0.45); }
+
+/* accent button */
+.btn-accent {
+  background: linear-gradient(90deg, var(--accent1), var(--accent2));
+  color: #0b0620;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-weight: 800;
 }
 
 /* logo box */
@@ -30,32 +53,32 @@ body {
   box-shadow: 0 10px 30px rgba(122,252,255,0.06);
 }
 
-/* cards */
-.card {
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border-radius: 12px;
-  padding: 14px;
-  border: 1px solid rgba(255,255,255,0.03);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
-}
-
-/* particles */
-.particles{ position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden }
-.particle{ position:absolute; font-size:18px; opacity:0.9; transform:translateY(0); animation:floatUp linear infinite }
-@keyframes floatUp {
-  from { transform: translateY(12vh) rotate(0deg); opacity:0; }
+/* particle emojis */
+.particles { position: fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden; }
+.particle { position:absolute; opacity:0.95; transform:translateY(0); animation:float linear infinite; }
+@keyframes float {
+  from { transform: translateY(15vh) rotate(0deg); opacity:0; }
   10% { opacity:1; }
   60% { opacity:0.9; }
-  to { transform: translateY(-20vh) rotate(360deg); opacity:0; }
+  to { transform: translateY(-40vh) rotate(360deg); opacity:0; }
 }
 
-/* small components */
-.avatar { width:56px; height:56px; border-radius:10px; object-fit:cover; border:2px solid rgba(255,255,255,0.03); }
-.btn-accent { background: linear-gradient(90deg, var(--accent1), var(--accent2)); color: #0b0620; padding: 10px 14px; border-radius:10px; font-weight:800; }
-.marquee { white-space:nowrap; overflow:hidden; }
-.marquee-inner { display:inline-block; animation: marquee 18s linear infinite; }
-@keyframes marquee { 0%{ transform:translateX(100%)} 100%{ transform:translateX(-100%)} }
+/* chat bubbles */
+.chat-bubble {
+  border-radius: 14px;
+  padding: 10px 12px;
+  max-width: 70%;
+}
+.chat-bubble.me { background: linear-gradient(90deg, #ff7eb3, #7afcff); color: black; margin-left:auto; }
+.chat-bubble.other { background: rgba(255,255,255,0.03); color: white; }
+.chat-bubble:hover { box-shadow: 0 10px 30px rgba(122,252,255,0.06); transform: translateY(-2px); transition: all .12s ease; }
 
-@media (max-width:880px){
-  .avatar { width:48px; height:48px; }
-                               }
+/* marquee (trending) */
+.marquee { overflow:hidden; white-space:nowrap; }
+.marquee-inner { display:inline-block; animation: marquee 20s linear infinite; }
+@keyframes marquee { 0%{ transform: translateX(100%);} 100%{ transform: translateX(-100%);} }
+
+/* responsiveness tweaks */
+@media (max-width:880px) {
+  .logo-box { width: 56px; height:56px; }
+}
