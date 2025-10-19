@@ -16,16 +16,11 @@ export default function UserProfileForm({ onComplete }) {
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  const handleChange = e => setForm({...form, [e.target.name]: e.target.value});
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
-
-    if (parseInt(form.age) < 16) {
-      return setError("You must be 16+ to register");
-    }
+    if (parseInt(form.age) < 16) return setError("You must be 16+ to register");
 
     let photoURL = null;
 
@@ -45,80 +40,37 @@ export default function UserProfileForm({ onComplete }) {
         email: auth.currentUser.email
       });
 
-      onComplete(); // ✅ call parent callback after saving
-    } catch (err) {
+      onComplete();
+    } catch(err) {
       setError(err.message);
     }
-  };
+  }
 
   return (
-    <div className="bg-[#220022] p-6 rounded-xl w-full max-w-md shadow-lg">
-      <h2 className="text-xl mb-4">Complete Your Profile</h2>
-      {error && <p className="text-red-500 mb-2">{error}</p>}
-      <form onSubmit={handleSubmit} className="flex flex-col">
-        <input
-          name="username"
-          placeholder="Username"
-          value={form.username}
-          onChange={handleChange}
-          required
-        />
-        <input
-          name="bio"
-          placeholder="Bio"
-          value={form.bio}
-          onChange={handleChange}
-        />
-        <input
-          name="location"
-          placeholder="Location"
-          value={form.location}
-          onChange={handleChange}
-        />
-        <input
-          name="age"
-          type="number"
-          placeholder="Age"
-          value={form.age}
-          onChange={handleChange}
-          required
-        />
-        <input
-          name="hobby"
-          placeholder="Hobby"
-          value={form.hobby}
-          onChange={handleChange}
-        />
-        <select
-          name="sex"
-          value={form.sex}
-          onChange={handleChange}
-          required
-        >
+    <div className="bg-[#330033] p-6 rounded-2xl shadow-xl w-full max-w-md flex flex-col gap-3">
+      <h2 className="text-xl font-bold text-pink-400 mb-2">Complete Your Profile</h2>
+      {error && <p className="text-red-500">{error}</p>}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+        <input name="username" placeholder="Username" value={form.username} onChange={handleChange} required className="p-2 rounded bg-[#220022] text-white"/>
+        <input name="bio" placeholder="Bio" value={form.bio} onChange={handleChange} className="p-2 rounded bg-[#220022] text-white"/>
+        <input name="location" placeholder="Location" value={form.location} onChange={handleChange} className="p-2 rounded bg-[#220022] text-white"/>
+        <input name="age" type="number" placeholder="Age" value={form.age} onChange={handleChange} required className="p-2 rounded bg-[#220022] text-white"/>
+        <input name="hobby" placeholder="Hobby" value={form.hobby} onChange={handleChange} className="p-2 rounded bg-[#220022] text-white"/>
+        <select name="sex" value={form.sex} onChange={handleChange} required className="p-2 rounded bg-[#220022] text-white">
           <option value="">Select Sex</option>
           <option value="Male">Male</option>
           <option value="Female">Female</option>
           <option value="Other">Other</option>
         </select>
-        <select
-          name="relationshipStatus"
-          value={form.relationshipStatus}
-          onChange={handleChange}
-        >
+        <select name="relationshipStatus" value={form.relationshipStatus} onChange={handleChange} className="p-2 rounded bg-[#220022] text-white">
           <option value="">Relationship Status</option>
           <option value="Single">Single</option>
           <option value="In a Relationship">In a Relationship</option>
           <option value="Complicated">Complicated</option>
         </select>
-        <input
-          type="file"
-          onChange={(e) => setFile(e.target.files[0])}
-          className="mb-2"
-        />
-        <button type="submit" className="mt-2">
-          Save Profile
-        </button>
+        <input type="file" onChange={e=>setFile(e.target.files[0])} className="p-2 rounded bg-[#220022] text-white"/>
+        <button type="submit" className="mt-2 bg-pink-600 py-2 rounded font-bold hover:bg-pink-500 transition-colors">Save Profile</button>
       </form>
     </div>
-  );
-}
+  )
+        }
