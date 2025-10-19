@@ -15,12 +15,12 @@ export default function AdminPage() {
         <button onClick={()=>{ if(password===ADMIN_PASS) setLoggedIn(true)}}>Login</button>
       </div>
     </div>
-  )
+  );
 
   return (
     <div className="min-h-screen flex flex-col items-center pt-8">
       <h1 className="text-3xl mb-4">Admin Panel</h1>
       <AdminPanel />
     </div>
-  )
+  );
     }
