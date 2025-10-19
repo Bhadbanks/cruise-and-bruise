@@ -16,28 +16,41 @@ export default function Home() {
   }, []);
 
   if (!user) return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#220022] to-[#440044] relative overflow-hidden">
-      {/* Floating animated shapes */}
-      <motion.div className="absolute w-32 h-32 bg-rose-500 rounded-full opacity-20"
-        animate={{ y: [0, 50, 0] }} transition={{ duration: 6, repeat: Infinity }}/>
-      <motion.div className="absolute top-1/4 left-10 w-24 h-24 bg-pink-500 rounded-full opacity-25"
-        animate={{ x: [0, 40, 0] }} transition={{ duration: 5, repeat: Infinity }}/>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#220022] to-[#440044] relative overflow-hidden">
+  
+  {/* Floating background elements */}
+  <motion.div 
+    className="absolute w-32 h-32 bg-rose-500 rounded-full opacity-20"
+    animate={{ y: [0, 50, 0] }}
+    transition={{ duration: 6, repeat: Infinity }}
+  />
+  <motion.div 
+    className="absolute top-1/4 left-10 w-24 h-24 bg-pink-500 rounded-full opacity-25"
+    animate={{ x: [0, 40, 0] }}
+    transition={{ duration: 5, repeat: Infinity }}
+  />
 
-      <motion.img
-        src="/logo.png"
-        alt="Cruise & Bruise Logo"
-        className="w-40 mb-6 z-10"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ duration: 1 }}
-      />
+  {/* Logo */}
+  <motion.img
+    src="/logo.png"
+    alt="Cruise & Bruise Logo"
+    className="w-40 mb-6 z-10"
+    initial={{ scale: 0 }}
+    animate={{ scale: 1 }}
+    transition={{ duration: 1 }}
+  />
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1 }}
-        className="bg-[#330033] p-6 rounded-2xl shadow-lg z-10 w-11/12 max-w-md"
-      >
+  {/* Centered login/register card */}
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: 1 }}
+    className="bg-[#330033] p-6 rounded-2xl shadow-lg z-10 w-full max-w-md mx-auto"
+  >
+    <AuthForm onLogin={() => setUser(auth.currentUser)} />
+  </motion.div>
+</div>
+    
         <AuthForm onLogin={() => setUser(auth.currentUser)} />
       </motion.div>
     </div>
