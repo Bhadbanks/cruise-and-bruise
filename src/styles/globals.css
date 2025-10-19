@@ -3,29 +3,18 @@
 @tailwind utilities;
 
 body {
-  @apply bg-gradient-to-br from-bgDark via-[#220022] to-[#330033] text-white font-sans min-h-screen overflow-x-hidden;
-  background-size: 400% 400%;
-  animation: gradientMove 15s ease infinite;
+  @apply bg-[#220022] text-white font-sans;
 }
 
-@keyframes gradientMove {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-input, textarea, select {
-  @apply bg-secondary text-white rounded p-2 w-full mb-4 focus:outline-none focus:ring-2 focus:ring-accent;
+::-webkit-scrollbar-thumb {
+  background-color: #ff3399;
+  border-radius: 4px;
 }
 
-button {
-  @apply bg-primary hover:bg-accent text-white font-bold py-2 px-4 rounded w-full transition-all duration-300;
+::-webkit-scrollbar-track {
+  background: #220022;
 }
-
-.float { animation: float 6s ease-in-out infinite; }
-.pulse-slow { animation: pulseSlow 3s ease-in-out infinite; }
-
-.chat-message { @apply bg-[#220022] p-2 rounded my-1; }
-.admin-announcement { @apply bg-[#330033] p-2 rounded font-bold text-yellow-300; }
-.profile-card { @apply bg-[#220022] p-4 rounded shadow-lg flex flex-col items-center; }
-.marquee { animation: marquee 15s linear infinite; white-space: nowrap; }
