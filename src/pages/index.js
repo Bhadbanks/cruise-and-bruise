@@ -1,50 +1,18 @@
 import { useState } from "react";
-import { auth } from "../utils/firebase";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { useRouter } from "next/router";
+import AuthForm from "../components/AuthForm";
 
 export default function Home() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isRegister, setIsRegister] = useState(false);
-  const router = useRouter();
+  const [loggedIn, setLoggedIn] = useState(false);
 
-  const handleAuth = async () => {
-    try {
-      if (isRegister) await createUserWithEmailAndPassword(auth, email, password);
-      else await signInWithEmailAndPassword(auth, email, password);
-      router.push("/profile");
-    } catch (err) {
-      alert(err.message);
-    }
-  };
+  if (loggedIn) return <p className="text-center mt-20 text-xl">Welcome! Go to <a href="/chat" className="text-accent underline">Chat</a></p>;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-6">
-      <img src="/logo.png" className="w-32 h-32 mb-4" />
-      <h1 className="text-5xl font-bold text-accent text-center">
-        𝐂𝐫𝐮𝐢𝐬𝐞🌹 𝐚𝐧𝐝 𝐁𝐫𝐮𝐢𝐬𝐞 😹💬💔
-      </h1>
-      <input
-        type="email"
-        placeholder="Email"
-        className="p-2 rounded"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        className="p-2 rounded"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <button onClick={handleAuth} className="bg-primary px-6 py-2 rounded hover:bg-accent">
-        {isRegister ? "Register" : "Login"}
-      </button>
-      <p className="cursor-pointer" onClick={() => setIsRegister(!isRegister)}>
-        {isRegister ? "Already have an account? Login" : "Don't have an account? Register"}
+    <div className="min-h-screen bg-gradient-to-br from-[#110011] via-[#220022] to-[#330033] flex flex-col items-center justify-center">
+      <img src="/logo.png" className="w-32 h-32 mb-8 float" alt="Logo" />
+      <AuthForm onLogin={()=>setLoggedIn(true)} />
+      <p className="mt-4 text-sm text-center">
+        Join the GC on WhatsApp: <a href="https://chat.whatsapp.com/GoD2y1glenX7mkl60g5aqP" className="text-accent underline" target="_blank">Cruise & Bruise 🌹💬</a>
       </p>
     </div>
-  );
+  )
     }
