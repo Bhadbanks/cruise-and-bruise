@@ -1,76 +1,84 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { auth, db, storage } from "../utils/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useRouter } from "next/router";
 
-export default function UserProfileForm({ onComplete }) {
+function genAvatarUrl(seed){
+  return `https://avatars.dicebear.com/api/identicon/${encodeURIComponent(seed)}.svg`;
+}
+
+export default function UserProfileForm(){ 
   const [form, setForm] = useState({
-    username: "",
-    bio: "",
-    location: "",
-    age: "",
-    hobby: "",
-    sex: "",
-    relationshipStatus: ""
+    username:"", bio:"", location:"", age:"", hobby:"", sex:"", relationshipStatus:""
   });
   const [file, setFile] = useState(null);
   const [error, setError] = useState("");
+  const router = useRouter();
 
-  const handleChange = e => setForm({...form, [e.target.name]: e.target.value});
+  useEffect(()=> {
+    // if already authed, try prefill email/username
+    const u = auth.currentUser;
+    if(u && !form.username) setForm(f=>({...f, username: u.email ? u.email.split("@")[0] : ""}));
+  }, []);
 
-  const handleSubmit = async e => {
+  const handle = (e) => setForm({...form, [e.target.name]: e.target.value});
+
+  const submit = async (e) => {
     e.preventDefault();
-    if (parseInt(form.age) < 16) return setError("You must be 16+ to register");
-
-    let photoURL = null;
-
+    setError("");
+    if (!form.username) { setError("Choose a username"); return; }
+    if (!form.age || parseInt(form.age) < 16) { setError("You must be 16+ to register"); return; }
     try {
+      let photoURL = null;
       if (file) {
-        const storageRef = ref(storage, `avatars/${auth.currentUser.uid}`);
+        const storageRef = ref(storage, `avatars/${auth.currentUser.uid}_${Date.now()}`);
         await uploadBytes(storageRef, file);
         photoURL = await getDownloadURL(storageRef);
       } else {
-        const seed = encodeURIComponent(form.username || auth.currentUser.email);
-        photoURL = `https://avatars.dicebear.com/api/identicon/${seed}.svg`;
+        photoURL = genAvatarUrl(form.username || auth.currentUser.email || "user");
       }
 
       await setDoc(doc(db, "users", auth.currentUser.uid), {
-        ...form,
+        username: form.username,
+        bio: form.bio,
+        location: form.location,
+        age: parseInt(form.age),
+        hobby: form.hobby,
+        sex: form.sex,
+        relationshipStatus: form.relationshipStatus,
         photoURL,
-        email: auth.currentUser.email
+        email: auth.currentUser.email,
+        updatedAt: new Date().toISOString()
       });
 
-      onComplete();
-    } catch(err) {
+      router.push("/chat"); // done -> go to chat
+    } catch (err) {
       setError(err.message);
     }
-  }
+  };
 
   return (
-    <div className="bg-[#330033] p-6 rounded-2xl shadow-xl w-full max-w-md flex flex-col gap-3">
-      <h2 className="text-xl font-bold text-pink-400 mb-2">Complete Your Profile</h2>
-      {error && <p className="text-red-500">{error}</p>}
-      <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-        <input name="username" placeholder="Username" value={form.username} onChange={handleChange} required className="p-2 rounded bg-[#220022] text-white"/>
-        <input name="bio" placeholder="Bio" value={form.bio} onChange={handleChange} className="p-2 rounded bg-[#220022] text-white"/>
-        <input name="location" placeholder="Location" value={form.location} onChange={handleChange} className="p-2 rounded bg-[#220022] text-white"/>
-        <input name="age" type="number" placeholder="Age" value={form.age} onChange={handleChange} required className="p-2 rounded bg-[#220022] text-white"/>
-        <input name="hobby" placeholder="Hobby" value={form.hobby} onChange={handleChange} className="p-2 rounded bg-[#220022] text-white"/>
-        <select name="sex" value={form.sex} onChange={handleChange} required className="p-2 rounded bg-[#220022] text-white">
+    <div className="card max-w-md mx-auto">
+      <h2 className="text-xl font-bold mb-2">Complete your profile</h2>
+      {error && <div className="text-red-300 mb-2">{error}</div>}
+      <form onSubmit={submit} className="flex flex-col gap-2">
+        <input name="username" placeholder="Username" value={form.username} onChange={handle} />
+        <input name="location" placeholder="Location" value={form.location} onChange={handle} />
+        <input name="age" placeholder="Age" value={form.age} onChange={handle} type="number" />
+        <input name="hobby" placeholder="Hobby" value={form.hobby} onChange={handle} />
+        <select name="sex" value={form.sex} onChange={handle} required>
           <option value="">Select Sex</option>
-          <option value="Male">Male</option>
-          <option value="Female">Female</option>
-          <option value="Other">Other</option>
+          <option>Male</option><option>Female</option><option>Other</option>
         </select>
-        <select name="relationshipStatus" value={form.relationshipStatus} onChange={handleChange} className="p-2 rounded bg-[#220022] text-white">
-          <option value="">Relationship Status</option>
-          <option value="Single">Single</option>
-          <option value="In a Relationship">In a Relationship</option>
-          <option value="Complicated">Complicated</option>
+        <select name="relationshipStatus" value={form.relationshipStatus} onChange={handle}>
+          <option value="">Relationship status</option>
+          <option>Single</option><option>In a Relationship</option><option>Complicated</option>
         </select>
-        <input type="file" onChange={e=>setFile(e.target.files[0])} className="p-2 rounded bg-[#220022] text-white"/>
-        <button type="submit" className="mt-2 bg-pink-600 py-2 rounded font-bold hover:bg-pink-500 transition-colors">Save Profile</button>
+        <textarea name="bio" placeholder="Short bio" value={form.bio} onChange={handle}/>
+        <input type="file" accept="image/*" onChange={e=>setFile(e.target.files[0])}/>
+        <button className="btn-accent" type="submit">Save profile</button>
       </form>
     </div>
-  )
+  );
         }
