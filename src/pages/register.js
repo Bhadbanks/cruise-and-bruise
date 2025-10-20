@@ -1,53 +1,91 @@
-// src/pages/register.js
 import { useState } from "react";
-import { auth } from "../utils/firebase";
+import { auth, db } from "../utils/firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import { createUserProfile } from "../utils/helpers";
 import { useRouter } from "next/router";
+import { doc, setDoc } from "firebase/firestore";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
-export default function Register(){
+export default function Register() {
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [bio, setBio] = useState("");
+  const [error, setError] = useState("");
   const router = useRouter();
-  const [form,setForm] = useState({username:'',email:'',password:'',age:'',whatsapp:'',sex:'',relationshipStatus:'',bio:''});
-  const [err,setErr] = useState(null);
 
-  const change = (e) => setForm({...form,[e.target.name]:e.target.value});
-
-  const submit = async (e) => {
-    e?.preventDefault();
-    if (parseInt(form.age || '0') < 16) { setErr("You must be 16+ to register"); return; }
-    try{
-      const cred = await createUserWithEmailAndPassword(auth, form.email, form.password);
-      await updateProfile(cred.user, { displayName: form.username });
-      await createUserProfile(cred.user.uid, form.username, form.email, {
-        bio: form.bio, age: form.age, whatsapp: form.whatsapp, sex: form.sex, relationshipStatus: form.relationshipStatus
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      await updateProfile(user, { displayName: username });
+      await setDoc(doc(db, "users", user.uid), {
+        username,
+        email,
+        whatsapp,
+        bio,
+        verified: false,
+        followers: [],
+        following: [],
+        createdAt: new Date()
       });
-      // Force join WhatsApp group
-      window.open(process.env.WHATSAPP_GROUP, '_blank');
-      router.push('/');
-    }catch(error){
-      setErr(error.message);
+      alert(`Welcome ${username}! Please join our WhatsApp group.`);
+      window.open("https://chat.whatsapp.com/Ll3R7OUbdjq3HsehVpskpz?mode=ems_copy_t", "_blank");
+      router.push("/");
+    } catch (err) {
+      setError("Registration failed. Try again.");
     }
   };
 
   return (
-    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div className="card" style={{width:520}}>
-        <h2>Register</h2>
-        {err && <div style={{color:'red'}}>{err}</div>}
-        <form onSubmit={submit} style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-          <input name="username" className="input" placeholder="Username" value={form.username} onChange={change} required/>
-          <input name="email" className="input" placeholder="Email" value={form.email} onChange={change} required />
-          <input name="password" className="input" placeholder="Password" type="password" value={form.password} onChange={change} required />
-          <input name="age" className="input" placeholder="Age" type="number" value={form.age} onChange={change} />
-          <input name="whatsapp" className="input" placeholder="WhatsApp number" value={form.whatsapp} onChange={change} />
-          <select name="sex" className="input" value={form.sex} onChange={change}><option value="">Sex</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select>
-          <select name="relationshipStatus" className="input" value={form.relationshipStatus} onChange={change}><option value="">Relationship</option><option>Single</option><option>In a Relationship</option><option>Complicated</option></select>
-          <textarea name="bio" placeholder="Short bio" value={form.bio} onChange={change} className="input" style={{gridColumn:'1 / -1'}}/>
-          <button className="btn" style={{gridColumn:'1 / -1'}}>Register & Join GC</button>
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-red-50 to-yellow-50 flex flex-col">
+      <Header />
+      <main className="flex-1 flex justify-center items-center">
+        <form onSubmit={handleRegister} className="bg-white p-8 rounded shadow-md w-full max-w-md">
+          <h2 className="text-2xl font-bold mb-4">Register</h2>
+          {error && <p className="text-red-500 mb-2">{error}</p>}
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+            className="w-full p-2 border rounded mb-4"
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className="w-full p-2 border rounded mb-4"
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            className="w-full p-2 border rounded mb-4"
+          />
+          <input
+            type="text"
+            placeholder="WhatsApp Number"
+            value={whatsapp}
+            onChange={e => setWhatsapp(e.target.value)}
+            className="w-full p-2 border rounded mb-4"
+          />
+          <textarea
+            placeholder="Bio"
+            value={bio}
+            onChange={e => setBio(e.target.value)}
+            className="w-full p-2 border rounded mb-4"
+          />
+          <button className="w-full bg-pink-500 text-white p-2 rounded hover:bg-pink-600">
+            Register & Join GC
+          </button>
         </form>
-      </div>
+      </main>
+      <Footer />
     </div>
   );
-          }
+              }
