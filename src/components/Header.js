@@ -1,40 +1,37 @@
-// src/components/Header.js
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { auth } from "../utils/firebase";
 import { signOut } from "firebase/auth";
-import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "../utils/firebase";
 
-export default function Header() {
+export default function Header({ currentUser }) {
   const router = useRouter();
-  const [user] = useAuthState(auth);
 
-  const logout = async () => {
+  const handleLogout = async () => {
     await signOut(auth);
     router.push("/login");
   };
 
   return (
-    <header className="header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
-      <div style={{display:'flex',alignItems:'center',gap:12}}>
-        <img src="/logo.png" alt="logo" style={{width:56,height:56,borderRadius:12}} />
-        <div>
-          <div style={{fontWeight:800}}>👑✨💥 Special Squad 💥✨👑</div>
-          <div style={{fontSize:12,color:'#d7cfe2'}}>Cruise & Bruise • Social Hub</div>
-        </div>
-      </div>
-      <nav style={{display:'flex',gap:12,alignItems:'center'}}>
-        <Link href="/"><a>Home</a></Link>
-        <Link href="/members"><a>Members</a></Link>
-        {user ? (
+    <header className="bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 p-4 flex justify-between items-center text-white shadow-md fixed w-full z-50">
+      <h1 className="text-2xl font-bold cursor-pointer" onClick={() => router.push("/")}>
+        👑✨💥 Special Squad 💥✨👑
+      </h1>
+      <nav className="flex items-center gap-4">
+        {currentUser ? (
           <>
-            <Link href={`/profile/${user.displayName || user.email.split('@')[0]}`}><a>Profile</a></Link>
-            <button onClick={logout} className="btn">Logout</button>
+            <Link href="/members" className="hover:underline">Members</Link>
+            <Link href={`/profile/${currentUser.username}`} className="hover:underline">Profile</Link>
+            <button onClick={handleLogout} className="bg-white text-pink-600 px-3 py-1 rounded font-semibold hover:bg-pink-100">
+              Logout
+            </button>
           </>
         ) : (
-          <Link href="/login"><a className="btn">Login / Register</a></Link>
+          <>
+            <Link href="/login" className="hover:underline">Login</Link>
+            <Link href="/register" className="hover:underline">Sign Up</Link>
+          </>
         )}
       </nav>
     </header>
   );
-}
+          }
