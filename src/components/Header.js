@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { isAdmin } from "..utils/admin;
 import { signOut } from "firebase/auth";
 import { auth } from "../utils/firebase";
 
@@ -34,4 +35,7 @@ export default function Header({ currentUser }) {
       </nav>
     </header>
   );
+          };
+
+{isAdmin(currentUser) && <span className="text-yellow-400 ml-2">★</span>}
           }
