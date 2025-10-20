@@ -1,5 +1,5 @@
 {
-  "name": "cruise-and-bruise",
+  "name": "special-squad-app",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -8,17 +8,11 @@
     "start": "next start"
   },
   "dependencies": {
-    "firebase": "^10.11.0",
-    "framer-motion": "^10.12.16",
+    "firebase": "^9.23.0",
     "next": "15.5.6",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "react-icons": "^4.11.0",
-    "swr": "^2.2.0"
-  },
-  "devDependencies": {
-    "autoprefixer": "^10.4.15",
-    "postcss": "^8.4.25",
-    "tailwindcss": "^3.3.3"
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "swr": "^2.2.3",
+    "uuid": "^9.0.0"
   }
 }
