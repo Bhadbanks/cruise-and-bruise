@@ -1,141 +1,95 @@
-import { useEffect, useState } from "react";
-import { db } from "../utils/firebase";
-import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot,
-  addDoc,
-  serverTimestamp,
-} from "firebase/firestore";
-import { fetchNews } from "../utils/helpers";
+import { useState, useEffect } from "react";
+import { collection, addDoc, getDocs, serverTimestamp, query, orderBy } from "firebase/firestore";
+import { db, auth } from "../utils/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
-export default function UnifiedFeed({ currentUser }) {
+export default function UnifiedFeed() {
   const [posts, setPosts] = useState([]);
-  const [news, setNews] = useState([]);
-  const [announcement, setAnnouncement] = useState("");
-  const [content, setContent] = useState("");
+  const [newPost, setNewPost] = useState("");
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  // Fetch all posts (user posts + admin announcements)
+  // Fetch posts from Firestore
   useEffect(() => {
-    const postsRef = collection(db, "posts");
-    const q = query(postsRef, orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setPosts(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    });
-    return unsubscribe;
+    const fetchPosts = async () => {
+      const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
+      const querySnapshot = await getDocs(q);
+      setPosts(querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    };
+    fetchPosts();
   }, []);
 
-  // Fetch news (random categories)
+  // Auth listener
   useEffect(() => {
-    async function loadNews() {
-      const articles = await fetchNews(["general", "sports", "entertainment", "technology"]);
-      setNews(articles);
-    }
-    loadNews();
+    onAuthStateChanged(auth, (u) => setUser(u));
   }, []);
 
-  // Admin announcement (visible on top)
-  useEffect(() => {
-    const adminRef = collection(db, "announcements");
-    const q = query(adminRef, orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const latest = snapshot.docs[0]?.data();
-      setAnnouncement(latest?.message || "");
-    });
-    return unsubscribe;
-  }, []);
-
-  // User posting
   const handlePost = async (e) => {
     e.preventDefault();
-    if (!content.trim()) return;
-    await addDoc(collection(db, "posts"), {
-      username: currentUser?.username || "Anonymous",
-      content,
-      createdAt: serverTimestamp(),
-      likes: [],
-      comments: [],
-      verified: currentUser?.isAdmin || false,
-    });
-    setContent("");
+    if (!newPost.trim()) return;
+    setLoading(true);
+    try {
+      await addDoc(collection(db, "posts"), {
+        text: newPost,
+        author: user?.displayName || "Anonymous",
+        email: user?.email,
+        timestamp: serverTimestamp(),
+        likes: 0,
+        type: "userPost",
+      });
+      setNewPost("");
+      alert("✨ Post shared successfully!");
+      window.location.reload();
+    } catch (err) {
+      console.error("Error posting:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="relative z-10">
-      {/* Admin announcement banner */}
-      {announcement && (
-        <div className="bg-gradient-to-r from-yellow-400 via-red-400 to-pink-500 text-white p-3 rounded-lg mb-4 text-center font-semibold shadow-md">
-          📢 {announcement}
-        </div>
-      )}
-
+    <section className="bg-white/60 backdrop-blur-xl p-6 rounded-2xl shadow-lg">
       {/* Post box */}
-      {currentUser && (
-        <form
-          onSubmit={handlePost}
-          className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-lg mb-4"
-        >
+      {user && (
+        <form onSubmit={handlePost} className="mb-6">
           <textarea
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="w-full border border-pink-200 rounded-lg p-2 mb-2 focus:ring-2 focus:ring-pink-400"
-            placeholder="💭 What's happening in the Special Squad?"
-            rows="3"
-          />
+            className="w-full border border-pink-300 rounded-lg p-3 focus:ring-2 focus:ring-pink-400 outline-none"
+            placeholder="What's new in the Squad? 💬"
+            value={newPost}
+            onChange={(e) => setNewPost(e.target.value)}
+            required
+          ></textarea>
           <button
             type="submit"
-            className="bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:scale-105 transition-transform"
+            disabled={loading}
+            className="mt-3 bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 text-white px-6 py-2 rounded-lg font-semibold hover:scale-105 transition-transform"
           >
-            Post
+            {loading ? "Posting..." : "Post"}
           </button>
         </form>
       )}
 
-      {/* User feed */}
-      <h2 className="text-xl font-bold mb-2">🔥 Special Squad Feed</h2>
-      {posts.length === 0 ? (
-        <p className="text-gray-500 text-center">No posts yet. Be the first to post!</p>
-      ) : (
-        posts.map((post) => (
-          <div
-            key={post.id}
-            className="bg-white/90 backdrop-blur-sm border border-pink-100 rounded-xl p-4 mb-3 shadow-sm hover:shadow-md transition"
-          >
-            <div className="flex justify-between items-center mb-1">
-              <p className="font-semibold text-pink-600">
-                {post.username}
-                {post.verified && <span className="text-yellow-400 ml-1">✔️</span>}
+      {/* Feed */}
+      <div className="space-y-4">
+        {posts.length > 0 ? (
+          posts.map((post) => (
+            <div
+              key={post.id}
+              className="bg-white border border-pink-100 rounded-xl p-4 shadow-sm hover:shadow-lg transition"
+            >
+              <p className="text-gray-800">{post.text}</p>
+              <p className="text-sm text-gray-500 mt-2">
+                — <span className="font-semibold text-pink-600">{post.author}</span> |{" "}
+                {post.type === "announcement" && (
+                  <span className="text-yellow-600 font-semibold">📢 Announcement</span>
+                )}
               </p>
-              <small className="text-gray-400">
-                {post.createdAt?.toDate
-                  ? post.createdAt.toDate().toLocaleString()
-                  : "Just now"}
-              </small>
             </div>
-            <p className="text-gray-800">{post.content}</p>
-          </div>
-        ))
-      )}
-
-      {/* News section */}
-      <h2 className="text-xl font-bold mt-6 mb-3">📰 Trending Now</h2>
-      {news.map((article, idx) => (
-        <div
-          key={idx}
-          className="bg-gradient-to-r from-white via-pink-50 to-yellow-50 border border-pink-100 rounded-xl p-4 mb-3 shadow-sm hover:shadow-md transition"
-        >
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-bold text-pink-600 hover:underline"
-          >
-            {article.title}
-          </a>
-          <p className="text-sm text-gray-500 mt-1">{article.source.name}</p>
-        </div>
-      ))}
-    </div>
+          ))
+        ) : (
+          <p className="text-center text-gray-500">No posts yet. Be the first to share! 🚀</p>
+        )}
+      </div>
+    </section>
   );
-            }
+              }
