@@ -1,4 +1,3 @@
-// src/pages/login.js
 import { useState } from "react";
 import { auth } from "../utils/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -6,35 +5,49 @@ import { useRouter } from "next/router";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
-export default function Login(){
+export default function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const router = useRouter();
-  const [email,setEmail] = useState('');
-  const [password,setPassword] = useState('');
-  const [err,setErr] = useState(null);
 
-  const submit = async (e) => {
-    e?.preventDefault();
-    try{
-      const cred = await signInWithEmailAndPassword(auth,email,password);
-      // redirect admin to admin page
-      if (cred.user.email === process.env.ADMIN_EMAIL) router.push('/admin');
-      else router.push('/');
-    }catch(error){
-      setErr(error.message);
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      router.push("/");
+    } catch (err) {
+      setError("Invalid credentials");
     }
   };
 
   return (
-    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center'}}>
-      <div className="card" style={{width:420}}>
-        <h2>Login</h2>
-        {err && <div style={{color:'red'}}>{err}</div>}
-        <form onSubmit={submit} style={{display:'flex',flexDirection:'column',gap:8}}>
-          <input className="input" placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} required/>
-          <input className="input" placeholder="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)} required/>
-          <button className="btn" type="submit">Login</button>
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-red-50 to-yellow-50 flex flex-col">
+      <Header />
+      <main className="flex-1 flex justify-center items-center">
+        <form onSubmit={handleLogin} className="bg-white p-8 rounded shadow-md w-full max-w-md">
+          <h2 className="text-2xl font-bold mb-4">Login</h2>
+          {error && <p className="text-red-500 mb-2">{error}</p>}
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className="w-full p-2 border rounded mb-4"
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            className="w-full p-2 border rounded mb-4"
+          />
+          <button className="w-full bg-pink-500 text-white p-2 rounded hover:bg-pink-600">
+            Login
+          </button>
         </form>
-      </div>
+      </main>
+      <Footer />
     </div>
   );
-          }
+              }
