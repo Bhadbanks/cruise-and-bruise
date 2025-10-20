@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
-    "start": "next start -p 3000"
+    "start": "next start -p 3000",
+    "lint": "next lint"
   },
   "dependencies": {
     "axios": "^1.5.0",
@@ -14,7 +15,11 @@
     "next": "13.5.6",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "react-firebase-hooks": "^5.0.3",
+    "react-firebase-hooks": "^5.1.1",
     "swr": "^2.2.0"
+  },
+  "devDependencies": {
+    "eslint": "8.56.0",
+    "eslint-config-next": "13.5.6"
   }
 }
