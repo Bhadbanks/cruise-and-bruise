@@ -1,28 +1,34 @@
-// src/components/NewsFeed.js
 import { useEffect, useState } from "react";
-import { fetchNewsServer } from "../utils/helpers";
+import { fetchPosts, fetchNews } from "../utils/helpers";
+import PostCard from "./PostCard";
 
-export default function NewsFeed({ posts = [] }) {
+export default function NewsFeed() {
+  const [posts, setPosts] = useState([]);
   const [news, setNews] = useState([]);
 
   useEffect(() => {
-    async function get() {
-      const a = await fetch('/api/news').then(r => r.json()).catch(()=>[]);
-      setNews(a || []);
+    async function getData() {
+      const p = await fetchPosts();
+      const n = await fetchNews();
+      setPosts(p);
+      setNews(n);
     }
-    get();
+    getData();
   }, []);
 
   return (
-    <div style={{display:'grid',gridTemplateColumns:'1fr',gap:12}}>
-      <div className="card">
-        <h3>Recent Posts</h3>
-        {posts.length===0 ? <p className="small-muted">No posts yet</p> : posts.map(p => <div key={p.id}><strong>{p.authorName}</strong><div>{p.content}</div><hr/></div>)}
-      </div>
-      <div className="card">
-        <h3>Tech News</h3>
-        {news.length===0 ? <p className="small-muted">No news</p> : news.slice(0,5).map((a,i)=>(<div key={i}><a href={a.url} target="_blank" rel="noreferrer">{a.title}</a><div style={{fontSize:12,color:'#cbbdd8'}}>{a.source.name}</div><hr/></div>))}
-      </div>
+    <div className="flex flex-col gap-4 mt-6">
+      <h2 className="text-xl font-bold">Community Feed</h2>
+      {posts.map(post => <PostCard key={post.id} post={post} />)}
+      <h2 className="text-xl font-bold mt-6">Latest News</h2>
+      {news.map((article, idx) => (
+        <div key={idx} className="border p-3 rounded shadow bg-white dark:bg-gray-800">
+          <a href={article.url} target="_blank" rel="noopener noreferrer" className="font-bold hover:underline">
+            {article.title}
+          </a>
+          <p className="text-sm text-gray-500">{article.source.name}</p>
+        </div>
+      ))}
     </div>
   );
-           }
+      }
