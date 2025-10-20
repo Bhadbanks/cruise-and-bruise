@@ -15,7 +15,7 @@ export default function Header({ currentUser }) {
     <header className="fixed top-0 left-0 w-full z-50 bg-white/80 backdrop-blur-lg border-b border-pink-200 shadow-sm">
       <div className="max-w-6xl mx-auto flex justify-between items-center p-4">
         <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-pink-600 via-red-500 to-yellow-500 bg-clip-text text-transparent">
-          Special Squad ✨
+          👑Special Squad ✨
         </Link>
         <nav className="flex items-center gap-4">
           <Link href="/" className="text-gray-700 hover:text-pink-600 font-medium">
