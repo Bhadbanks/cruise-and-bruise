@@ -1,15 +1,15 @@
-// src/components/PostCard.js
 export default function PostCard({ post }) {
   return (
-    <div className="card" style={{marginBottom:12}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <div>
-          <div style={{fontWeight:700}}>{post.authorName}</div>
-          <div style={{fontSize:12,color:'#cbbdd8'}}>{new Date(post.createdAt).toLocaleString()}</div>
-        </div>
+    <div className="border rounded p-4 shadow-md bg-white dark:bg-gray-800 mb-4">
+      <div className="flex justify-between items-center mb-2">
+        <span className="font-bold">{post.username} {post.verified && <span className="text-yellow-400">★</span>}</span>
+        <span className="text-xs text-gray-500">{new Date(post.createdAt.toDate()).toLocaleString()}</span>
       </div>
-      <div style={{marginTop:8}}>{post.content}</div>
-      <div style={{marginTop:10,fontSize:13,color:'#cbbdd8'}}>&nbsp;❤️ {post.likes?.length || 0} &nbsp; 💬 {post.comments?.length || 0}</div>
+      <p className="mb-2">{post.content}</p>
+      <div className="flex gap-4 text-sm text-gray-500">
+        <span>❤️ {post.likes?.length || 0}</span>
+        <span>💬 {post.comments?.length || 0}</span>
+      </div>
     </div>
   );
 }
