@@ -1,40 +1,73 @@
-html, body {
-  margin: 0;
-  padding: 0;
-  font-family: 'Inter', sans-serif;
-  background: linear-gradient(to right, #ff9a9e, #fad0c4, #fad0c4);
-  min-height: 100%;
-}
+/* styles/globals.css - global styles and basic utilities */
 
-a { text-decoration: none; color: inherit; }
-
+/* base reset */
 * { box-sizing: border-box; }
-
-::-webkit-scrollbar {
-  width: 8px;
+html, body, #__next { height: 100%; }
+body {
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: linear-gradient(180deg, #fff7fb 0%, #fff9f2 100%);
+  color: #111827;
 }
 
-::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.2);
-  border-radius: 4px;
-}
+/* links */
+a { color: inherit; text-decoration: none; }
 
-button {
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-}
+/* container helpers */
+.container { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
 
-input, textarea {
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 8px 12px;
-  font-size: 14px;
-  width: 100%;
-  transition: all 0.2s ease-in-out;
+/* inputs/buttons */
+input, textarea, select {
+  font-family: inherit;
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.9);
+  transition: box-shadow .15s ease, transform .08s ease;
 }
-
-input:focus, textarea:focus {
+input:focus, textarea:focus, select:focus {
   outline: none;
-  border-color: #ff5e5e;
-  box-shadow: 0 0 5px rgba(255, 94, 94, 0.5);
+  box-shadow: 0 6px 18px rgba(255,100,150,0.08);
+  transform: translateY(-1px);
+}
+
+/* buttons */
+button {
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 8px 14px;
+  border: none;
+}
+.btn-primary {
+  background: linear-gradient(90deg,#ff5e8d,#ffb86b);
+  color: #081124;
+  box-shadow: 0 10px 30px rgba(255,110,160,0.08);
+}
+
+/* cards */
+.card {
+  background: rgba(255,255,255,0.85);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 10px 30px rgba(6,7,12,0.06);
+  border: 1px solid rgba(0,0,0,0.03);
+}
+
+/* small helpers */
+.text-muted { color: rgba(17,24,39,0.6); }
+.center { text-align:center; }
+
+/* animations */
+@keyframes float-up {
+  0% { transform: translateY(0); opacity: 0.9; }
+  50% { transform: translateY(-20px); opacity: 0.6; }
+  100% { transform: translateY(0); opacity: 0.9; }
+}
+
+/* responsive */
+@media (max-width: 880px) {
+  .container { padding: 0 12px; }
 }
