@@ -1,33 +1,27 @@
-// src/pages/members.js
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import UserCard from "../components/UserCard";
-import { getAllUsers } from "../utils/helpers";
+import { db } from "../utils/firebase";
+import { collection, getDocs } from "firebase/firestore";
 
-export default function MembersPage(){
+export default function Members() {
   const [users, setUsers] = useState([]);
-  const [search,setSearch] = useState('');
 
-  useEffect(()=> {
-    (async ()=> {
-      const u = await getAllUsers();
-      setUsers(u);
-    })();
+  useEffect(() => {
+    async function fetchUsers() {
+      const snap = await getDocs(collection(db, "users"));
+      setUsers(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }
+    fetchUsers();
   }, []);
 
-  const filtered = users.filter(x => x.username?.toLowerCase().includes(search.toLowerCase()));
-
   return (
-    <div>
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-red-50 to-yellow-50">
       <Header />
-      <main style={{maxWidth:1000,margin:'18px auto',padding:16}}>
-        <div className="card" style={{marginBottom:12}}>
-          <input placeholder="Search members..." value={search} onChange={e=>setSearch(e.target.value)} className="input" />
-        </div>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:12}}>
-          {filtered.map(u => <UserCard key={u.uid || u.username} user={u} />)}
-        </div>
+      <main className="max-w-4xl mx-auto p-4 mt-24">
+        <h2 className="text-2xl font-bold mb-4">Members</h2>
+        {users.map(user => <UserCard key={user.id} user={user} />)}
       </main>
       <Footer />
     </div>
