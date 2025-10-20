@@ -1,5 +1,5 @@
 import Navbar from "../components/Navbar";
-import ChatBox from "../components/ChatBox";
+import Chat from "../components/Chat";
 
 export default function ChatPage(){
   return (
