@@ -1,40 +1,31 @@
-// src/pages/index.js
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import NewsFeed from "../components/NewsFeed";
-import FloatingParticles from "../components/FloatingParticles";
-import Chat from "../components/Chat";
-import { getPosts } from "../utils/helpers";
+import FloatingAnimation from "../components/FloatingAnimation";
+import { auth, db } from "../utils/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { fetchUsers } from "../utils/helpers";
 
 export default function Home() {
-  const [posts, setPosts] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
 
-  useEffect(()=> {
-    (async ()=> {
-      const p = await getPosts();
-      setPosts(p);
-    })();
+  useEffect(() => {
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        setCurrentUser({ uid: user.uid, email: user.email, username: user.displayName });
+      } else setCurrentUser(null);
+    });
   }, []);
 
   return (
-    <div>
-      <FloatingParticles />
-      <Header />
-      <main style={{maxWidth:1100,margin:'24px auto',padding:'0 16px',display:'grid',gridTemplateColumns:'2fr 1fr',gap:16}}>
-        <section>
-          <NewsFeed posts={posts} />
-        </section>
-        <aside>
-          <Chat />
-          <div className="card" style={{marginTop:12}}>
-            <h3>Admin Announcements</h3>
-            <p>Announcements posted by admin appear across the site.</p>
-            <a className="btn" href={process.env.WHATSAPP_GROUP} target="_blank" rel="noreferrer">Join WhatsApp</a>
-          </div>
-        </aside>
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-red-50 to-yellow-50 relative">
+      <FloatingAnimation />
+      <Header currentUser={currentUser} />
+      <main className="max-w-4xl mx-auto p-4 mt-24">
+        <NewsFeed />
       </main>
       <Footer />
     </div>
   );
-  }
+}
