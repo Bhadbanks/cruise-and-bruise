@@ -1,44 +1,45 @@
-// src/pages/profile/[username].js
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
-import { getUserByUsername, getPosts } from "../../utils/helpers";
+import { db } from "../../utils/firebase";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import PostCard from "../../components/PostCard";
 
-export default function ProfilePage(){
+export default function Profile() {
   const router = useRouter();
   const { username } = router.query;
-  const [user, setUser] = useState(null);
+  const [userData, setUserData] = useState(null);
   const [posts, setPosts] = useState([]);
 
-  useEffect(()=> {
+  useEffect(() => {
     if (!username) return;
-    (async ()=>{
-      const u = await getUserByUsername(username);
-      setUser(u);
-      const all = await getPosts();
-      setPosts(all.filter(p => p.uid === u?.uid));
-    })();
+    async function fetchUser() {
+      const q = query(collection(db, "users"), where("username", "==", username));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const data = snap.docs[0].data();
+        setUserData(data);
+        const postsSnap = await getDocs(query(collection(db, "posts"), where("uid", "==", snap.docs[0].id)));
+        setPosts(postsSnap.docs.map(p => ({ id: p.id, ...p.data() })));
+      }
+    }
+    fetchUser();
   }, [username]);
 
-  if (!user) return <div style={{padding:40}}>Loading...</div>;
+  if (!userData) return <p>Loading...</p>;
 
   return (
-    <div>
-      <Header />
-      <main style={{maxWidth:900,margin:'18px auto',padding:16}}>
-        <div className="card">
-          <h2>{user.username} {user.isAdmin && <span style={{color:'#ffd700'}}>★</span>}</h2>
-          <p>{user.bio}</p>
-          <p>Age: {user.age || '-'}</p>
-          <p>WhatsApp: {user.whatsapp || '-'}</p>
-          <p>Followers: {user.followers?.length || 0} | Following: {user.following?.length || 0}</p>
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 via-red-50 to-yellow-50">
+      <Header currentUser={{ username: userData.username }} />
+      <main className="max-w-4xl mx-auto p-4 mt-24">
+        <div className="bg-white p-6 rounded shadow mb-6">
+          <h2 className="text-2xl font-bold">{userData.username} {userData.verified && <span className="text-yellow-400">★</span>}</h2>
+          <p>{userData.bio}</p>
+          <p>Followers: {userData.followers?.length || 0} | Following: {userData.following?.length || 0}</p>
         </div>
-        <section style={{marginTop:12}}>
-          <h3>Posts</h3>
-          {posts.length===0 ? <p>No posts</p> : posts.map(p => <PostCard key={p.id} post={p}/>)}
-        </section>
+        <h3 className="text-xl font-bold mb-2">Posts</h3>
+        {posts.map(post => <PostCard key={post.id} post={post} />)}
       </main>
       <Footer />
     </div>
