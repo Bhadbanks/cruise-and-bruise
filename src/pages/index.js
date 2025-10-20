@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import NewsFeed from "../components/NewsFeed";
+import UnifiedFeed from "../components/UnifiedFeed";
 import FloatingAnimation from "../components/FloatingAnimation";
 import { auth, db } from "../utils/firebase";
 import { onAuthStateChanged } from "firebase/auth";
