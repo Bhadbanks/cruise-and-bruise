@@ -1,53 +1,60 @@
-// src/components/Chat.js
-import { useState, useEffect, useRef } from "react";
-import { db, auth } from "../utils/firebase";
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "firebase/firestore";
-import { useAuthState } from "react-firebase-hooks/auth";
+import { useState, useEffect } from "react";
+import { db } from "../utils/firebase";
+import { collection, query, where, onSnapshot, addDoc, orderBy } from "firebase/firestore";
 
-export default function Chat(){
-  const [user] = useAuthState(auth);
+export default function Chat({ currentUser, targetUser }) {
   const [messages, setMessages] = useState([]);
-  const [text, setText] = useState('');
-  const scrollRef = useRef();
+  const [input, setInput] = useState("");
 
   useEffect(() => {
-    const q = query(collection(db, "globalChat"), orderBy("createdAt", "asc"));
-    const unsub = onSnapshot(q, snap => setMessages(snap.docs.map(d=>({id:d.id,...d.data()}))));
-    return () => unsub();
-  }, []);
-
-  const send = async (e) => {
-    e?.preventDefault();
-    if (!text.trim() || !user) return;
-    await addDoc(collection(db, "globalChat"), {
-      author: user.displayName || user.email.split('@')[0],
-      uid: user.uid,
-      text: text.trim(),
-      createdAt: serverTimestamp()
+    if (!currentUser || !targetUser) return;
+    const q = query(
+      collection(db, "messages"),
+      where("participants", "array-contains", currentUser.uid),
+      orderBy("createdAt", "asc")
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const msgs = snap.docs
+        .map(doc => doc.data())
+        .filter(m => m.participants.includes(targetUser.uid));
+      setMessages(msgs);
     });
-    setText('');
-    setTimeout(()=> scrollRef.current?.scrollIntoView({behavior:'smooth'}),100);
+    return () => unsub();
+  }, [currentUser, targetUser]);
+
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+    await addDoc(collection(db, "messages"), {
+      participants: [currentUser.uid, targetUser.uid],
+      from: currentUser.uid,
+      to: targetUser.uid,
+      message: input,
+      createdAt: new Date()
+    });
+    setInput("");
   };
 
   return (
-    <div className="card" style={{display:'flex',flexDirection:'column',height:420}}>
-      <h3>Public Chat</h3>
-      <div style={{flex:1,overflowY:'auto',marginBottom:8}}>
-        {messages.map(m=>(
-          <div key={m.id} style={{marginBottom:6,background:m.uid===user?.uid?'#ffdede':'transparent',padding:6,borderRadius:8}}>
-            <div style={{fontSize:12,fontWeight:700}}>{m.author}</div>
-            <div>{m.text}</div>
-            <div style={{fontSize:11,color:'#cbbdd8'}}>{new Date(m.createdAt?.toDate?.() || m.createdAt).toLocaleString()}</div>
+    <div className="border rounded p-3 shadow h-96 flex flex-col justify-between bg-white dark:bg-gray-800">
+      <div className="overflow-y-auto mb-2">
+        {messages.map((msg, idx) => (
+          <div key={idx} className={`p-1 ${msg.from === currentUser.uid ? "text-right" : "text-left"}`}>
+            <span className="bg-gray-200 dark:bg-gray-700 rounded px-2 py-1 inline-block">{msg.message}</span>
           </div>
         ))}
-        <div ref={scrollRef} />
       </div>
-      {user ? (
-        <form onSubmit={send} style={{display:'flex',gap:8}}>
-          <input value={text} onChange={e=>setText(e.target.value)} placeholder="Say something..." className="input" />
-          <button type="submit" className="btn">Send</button>
-        </form>
-      ) : <div>Please login to chat</div>}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          className="flex-1 border px-2 py-1 rounded"
+          placeholder="Type a message..."
+        />
+        <button onClick={sendMessage} className="bg-pink-500 text-white px-3 rounded hover:bg-pink-600">
+          Send
+        </button>
+      </div>
     </div>
   );
-        }
+    }
