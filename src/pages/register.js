@@ -1,229 +1,159 @@
+// src/pages/register.js
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import Head from 'next/head';
 import Link from 'next/link';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../utils/firebase';
-import { redirectToWhatsApp, uploadFile } from '../utils/helpers';
-import toast from 'react-hot-toast';
+import { useAuth } from '../utils/AuthContext';
 import { motion } from 'framer-motion';
-import { FiUserPlus, FiLock, FiMail, FiPhone, FiMapPin, FiHeart, FiGlobe, FiCalendar, FiUpload } from 'react-icons/fi';
-import { FaVenusMars } from 'react-icons/fa';
+import toast from 'react-hot-toast';
+import { FiMail, FiLock, FiUser, FiPlusCircle } from 'react-icons/fi';
 
-const Register = () => {
-    const router = useRouter();
-    const [formData, setFormData] = useState({
-        username: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        bio: '',
-        location: '',
-        age: '',
-        sex: '',
-        relationshipStatus: '',
-        whatsappNumber: '',
-        profilePic: null,
-        coverImg: null,
-    });
+const RegisterPage = () => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [username, setUsername] = useState('');
+    const [age, setAge] = useState('');
+    const [location, setLocation] = useState('');
+    const [interests, setInterests] = useState('');
+    const [sex, setSex] = useState('');
+    const [relationshipStatus, setRelationshipStatus] = useState('');
+    const [whatsappNumber, setWhatsappNumber] = useState('');
+    const [whatsappConvoLink, setWhatsappConvoLink] = useState('');
     const [loading, setLoading] = useState(false);
+    const { register } = useAuth();
+    const router = useRouter();
 
-    const handleChange = (e) => {
-        const { name, value, files } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: files ? files[0] : value
-        }));
-    };
-
-    const handleRegister = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        const { username, email, password, confirmPassword, profilePic, coverImg, ...profileData } = formData;
-
-        if (password !== confirmPassword) {
-            return toast.error("Passwords do not match.");
-        }
-        if (password.length < 6) {
-            return toast.error("Password must be at least 6 characters.");
-        }
-        if (!/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
-             return toast.error("Please enter a valid email address.");
-        }
-
         setLoading(true);
 
+        const userData = {
+            username: username.trim(),
+            age,
+            location,
+            interests,
+            sex,
+            relationshipStatus,
+            whatsappNumber,
+            whatsappConvoLink,
+        };
+
         try {
-            // 1. Create User in Firebase Authentication
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            const user = userCredential.user;
-
-            let profilePicUrl = '';
-            let coverImgUrl = '';
-
-            // 2. Upload Profile Picture
-            if (profilePic) {
-                profilePicUrl = await uploadFile(profilePic, `profiles/${user.uid}/profilePic`);
-            }
+            await register(email, password, userData);
             
-            // 3. Upload Cover Image
-            if (coverImg) {
-                coverImgUrl = await uploadFile(coverImg, `profiles/${user.uid}/coverImg`);
-            }
-
-            // 4. Create User Document in Firestore
-            await setDoc(doc(db, "users", user.uid), {
-                uid: user.uid,
-                username: username.toLowerCase(), 
-                email: email,
-                createdAt: serverTimestamp(),
-                profilePicUrl: profilePicUrl || '/default-avatar.png',
-                coverImgUrl: coverImgUrl || '/default-cover.jpg',
-                isVerified: false,
-                isAdmin: false,
-                followers: [],
-                following: [],
-                ...profileData, // Include age, location, whatsapp, etc.
-            });
-
-            toast.success("Registration successful! Welcome to the Squad.");
+            // Redirect to the mandatory GC Join page (handled by AppShell on successful registration)
+            router.push('/gc-join'); 
             
-            // 5. Redirect and Auto-Join GC
-            router.push('/');
-            redirectToWhatsApp();
-
         } catch (error) {
-            console.error("Registration error:", error);
-            let errorMessage = "Registration failed. Please try again.";
-            if (error.code === 'auth/email-already-in-use') {
-                errorMessage = "This email is already in use.";
+            let message = "Registration failed. Please try again.";
+            if (error.message.includes("Username already taken")) {
+                message = error.message;
+            } else if (error.code === 'auth/email-already-in-use') {
+                message = "This email is already registered.";
             } else if (error.code === 'auth/weak-password') {
-                errorMessage = "Password is too weak.";
+                message = "Password should be at least 6 characters.";
             }
-            toast.error(errorMessage);
-        } finally {
+            toast.error(message);
             setLoading(false);
         }
     };
 
-    const InputField = ({ label, name, type = 'text', icon: Icon, placeholder, required = false }) => (
-        <div className="relative">
-            {Icon && <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />}
-            <input
-                type={type}
-                name={name}
-                placeholder={placeholder || label}
-                value={type !== 'file' ? formData[name] : undefined}
-                onChange={handleChange}
-                required={required}
-                className={`w-full p-3 bg-gray-700 text-white rounded-lg placeholder-gray-400 focus:ring-2 focus:ring-gc-primary focus:outline-none transition duration-200 ${Icon ? 'pl-10' : 'pl-4'}`}
-            />
-        </div>
-    );
-
-    const FileUploadField = ({ label, name, required = false }) => (
-        <label className="block bg-gray-700 p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition duration-200">
-            <input type="file" name={name} onChange={handleChange} required={required} className="hidden" accept="image/*" />
-            <div className="flex items-center space-x-3 text-gray-300">
-                <FiUpload className="w-5 h-5" />
-                <span>{formData[name]?.name || `Upload ${label}`}</span>
-            </div>
-        </label>
-    );
+    const inputClass = "w-full pl-10 pr-4 py-3 bg-gc-vibe border border-gc-border rounded-lg text-white placeholder-gray-500 focus:ring-1 focus:ring-gc-primary focus:border-gc-primary transition";
 
     return (
         <motion.div 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            className="min-h-screen flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="min-h-screen flex items-center justify-center p-4 bg-gc-vibe bg-gc-gradient"
         >
-            <Head><title>Register | Special Squad</title></Head>
-            <motion.div 
-                initial={{ y: -50, opacity: 0 }} 
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.5 }}
-                className="w-full max-w-lg bg-gray-800 p-8 rounded-xl shadow-2xl border border-gray-700"
+            <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 100 }}
+                className="max-w-lg w-full bg-gc-card p-8 rounded-xl shadow-2xl border-2 border-gc-primary/80"
             >
-                <h1 className="text-3xl font-extrabold mb-2 text-white flex items-center space-x-2">
-                    <FiUserPlus className="w-6 h-6 text-gc-primary" />
-                    <span>Join The Squad</span>
+                <img src="/logo.png" alt="Logo" className="w-16 h-16 mx-auto mb-4" />
+                <h1 className="text-3xl font-bold text-white mb-2 text-center">
+                    Join the Squad
                 </h1>
-                <p className="text-gray-400 mb-6">Create your account and start connecting!</p>
+                <p className="text-gray-400 mb-6 text-center">
+                    Create your profile and start the vibe.
+                </p>
 
-                <form onSubmit={handleRegister} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    {/* Core Auth Fields */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <InputField name="username" icon={FiUserPlus} placeholder="Unique Username" required />
-                        <InputField name="email" type="email" icon={FiMail} placeholder="Email" required />
-                        <InputField name="password" type="password" icon={FiLock} placeholder="Password (min 6 chars)" required />
-                        <InputField name="confirmPassword" type="password" icon={FiLock} placeholder="Confirm Password" required />
-                        
-                        {/* Custom Profile Fields */}
-                        <InputField name="whatsappNumber" icon={FiPhone} placeholder="WhatsApp Number" />
-                        <InputField name="location" icon={FiMapPin} placeholder="Location" />
-                        <InputField name="age" type="number" icon={FiCalendar} placeholder="Age" min="16" />
-                        
                         <div className="relative">
-                            <FaVenusMars className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                            <select
-                                name="sex"
-                                value={formData.sex}
-                                onChange={handleChange}
-                                className="w-full p-3 bg-gray-700 text-white rounded-lg placeholder-gray-400 focus:ring-2 focus:ring-gc-primary focus:outline-none transition duration-200 pl-10"
-                            >
-                                <option value="">Select Sex</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                                <option value="Other">Other</option>
-                            </select>
+                            <FiUser className="absolute left-3 top-3.5 text-gray-400" />
+                            <input type="text" value={username} onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))} 
+                                placeholder="Username (Unique, no spaces)" required className={inputClass} />
                         </div>
-                        
                         <div className="relative">
-                            <FiHeart className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                            <select
-                                name="relationshipStatus"
-                                value={formData.relationshipStatus}
-                                onChange={handleChange}
-                                className="w-full p-3 bg-gray-700 text-white rounded-lg placeholder-gray-400 focus:ring-2 focus:ring-gc-primary focus:outline-none transition duration-200 pl-10"
-                            >
-                                <option value="">Relationship Status</option>
-                                <option value="Single">Single</option>
-                                <option value="In a Relationship">In a Relationship</option>
-                                <option value="Married">Married</option>
-                            </select>
+                            <FiMail className="absolute left-3 top-3.5 text-gray-400" />
+                            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} 
+                                placeholder="Email" required className={inputClass} />
                         </div>
-                        
-                        {/* Image Uploads */}
-                        <FileUploadField name="profilePic" label="Profile Picture" />
-                        <FileUploadField name="coverImg" label="Cover Image" />
-
+                    </div>
+                    <div className="relative">
+                        <FiLock className="absolute left-3 top-3.5 text-gray-400" />
+                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} 
+                            placeholder="Password (Min 6 characters)" required className={inputClass} />
                     </div>
                     
-                    <textarea
-                        name="bio"
-                        placeholder="Tell us a little about yourself (Bio)"
-                        value={formData.bio}
-                        onChange={handleChange}
-                        rows="3"
-                        className="w-full p-3 bg-gray-700 text-white rounded-lg placeholder-gray-400 focus:ring-2 focus:ring-gc-primary focus:outline-none transition duration-200"
-                    />
+                    {/* Additional Profile Fields */}
+                    <h2 className="text-lg font-semibold text-gc-secondary pt-4">Optional Vibe Details</h2>
+                    <div className="grid grid-cols-2 gap-4">
+                        <input type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Age" className={inputClass} />
+                        <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location" className={inputClass} />
+                        
+                        <select value={sex} onChange={(e) => setSex(e.target.value)} className={inputClass}>
+                            <option value="">Select Sex</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <select value={relationshipStatus} onChange={(e) => setRelationshipStatus(e.target.value)} className={inputClass}>
+                            <option value="">Relationship Status</option>
+                            <option value="Single">Single</option>
+                            <option value="In a Relationship">In a Relationship</option>
+                            <option value="Married">Married</option>
+                            <option value="It's Complicated">It's Complicated</option>
+                        </select>
+                    </div>
+                    <textarea value={interests} onChange={(e) => setInterests(e.target.value)} placeholder="Interests (e.g., coding, gaming, music)" rows="2" className={inputClass.replace("pl-10", "pl-4")} />
+                    
+                    <h2 className="text-lg font-semibold text-gc-secondary pt-4">WhatsApp Link (For Profile)</h2>
+                    <div className="relative">
+                        <input type="text" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} 
+                            placeholder="WhatsApp Number (e.g., +23480...)" className={inputClass.replace("pl-10", "pl-4")} />
+                    </div>
+                    <div className="relative">
+                        <input type="url" value={whatsappConvoLink} onChange={(e) => setWhatsappConvoLink(e.target.value)} 
+                            placeholder="WhatsApp Chat Link (wa.me/...) - Optional" className={inputClass.replace("pl-10", "pl-4")} />
+                    </div>
 
                     <motion.button
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
                         type="submit"
-                        disabled={loading}
-                        className="w-full py-3 bg-gc-primary text-white font-bold rounded-lg hover:bg-pink-700 transition duration-200 disabled:opacity-50"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        disabled={loading || !username.trim()}
+                        className="w-full py-3 mt-6 bg-gc-primary text-white font-bold rounded-lg shadow-lg hover:bg-gc-secondary transition duration-300 disabled:opacity-50 flex items-center justify-center space-x-2"
                     >
-                        {loading ? 'Registering...' : 'Register & Join WhatsApp GC'}
+                        <FiPlusCircle />
+                        <span>{loading ? 'Creating Squad Profile...' : 'Create Account'}</span>
                     </motion.button>
                 </form>
 
-                <p className="text-center text-gray-400 mt-6">
-                    Already a member? <Link href="/login" legacyBehavior><a className="text-gc-primary hover:underline">Log in here</a></Link>
+                <p className="text-center text-gray-500 mt-6 text-sm">
+                    Already a Squad Member?{' '}
+                    <Link href="/login" legacyBehavior>
+                        <a className="text-gc-primary font-semibold hover:underline">
+                            Log In
+                        </a>
+                    </Link>
                 </p>
             </motion.div>
         </motion.div>
     );
 };
 
-export default Register;
+export default RegisterPage;
