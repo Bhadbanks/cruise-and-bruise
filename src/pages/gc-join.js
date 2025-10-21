@@ -4,77 +4,76 @@ import { useAuth } from '../utils/AuthContext';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import { FiAlertTriangle } from 'react-icons/fi';
+import { FaWhatsapp } from 'react-icons/fa';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../utils/firebase';
-import Link from 'next/link';
+import GlobalLoading from '../components/GlobalLoading';
 
 const GcJoinPage = () => {
-    const { currentUser, loading, userProfile, GC_LINK } = useAuth();
+    const { currentUser, userProfile, GC_LINK } = useAuth();
     const router = useRouter();
     const [isUpdating, setIsUpdating] = useState(false);
 
     useEffect(() => {
-        if (loading) return;
-
-        // If not logged in, redirect to login
-        if (!currentUser) {
-            router.push('/login');
-            return;
-        }
+        if (!currentUser || !userProfile) return;
 
         // If user has already joined, redirect to home
-        if (userProfile && userProfile.hasJoinedGC) {
-            router.push('/');
-            return;
+        if (userProfile.hasJoinedGC) {
+            router.replace('/');
         }
-    }, [currentUser, loading, userProfile, router]);
+    }, [currentUser, userProfile, router]);
+    
+    // Fallback: If no user or profile, AuthContext is still loading/redirecting
+    if (!currentUser || !userProfile || userProfile.hasJoinedGC) {
+        return <GlobalLoading />;
+    }
+
 
     const handleJoinAndContinue = async () => {
-        if (!userProfile || isUpdating) return;
+        if (isUpdating) return;
         setIsUpdating(true);
 
         try {
-            // Mark user as having joined the GC in Firestore
+            // 1. Redirect to the group chat link first
+            window.open(GC_LINK, '_blank');
+            
+            // 2. Mark user as having joined the GC in Firestore
             const userRef = doc(db, 'users', userProfile.uid);
             await updateDoc(userRef, {
                 hasJoinedGC: true,
             });
 
-            // Redirect to the group chat link first
-            window.open(GC_LINK, '_blank');
-            
-            // Wait briefly before redirecting home
+            // 3. Redirect to the home page after a brief delay
             setTimeout(() => {
-                router.push('/');
-            }, 1500);
+                router.replace('/');
+            }, 1000); // Give user time for WhatsApp redirect to initiate
 
         } catch (error) {
             console.error("Error updating GC status:", error);
             setIsUpdating(false);
-            // Even if update fails, we can still redirect home
-            router.push('/'); 
+            // Optionally, still redirect home if update fails to let them retry later
+            router.replace('/'); 
         }
     };
     
-    // Fallback loading check
-    if (loading || !userProfile || userProfile.hasJoinedGC) {
-        return <div className="min-h-screen bg-gc-vibe flex items-center justify-center text-white">Loading...</div>;
-    }
-
     return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-gray-900">
+        <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="min-h-screen flex items-center justify-center p-4 bg-gc-vibe"
+        >
             <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ type: "spring", stiffness: 100 }}
-                className="max-w-md w-full bg-gray-800 p-8 rounded-xl shadow-2xl border-2 border-gc-primary"
+                className="max-w-md w-full bg-gc-card p-8 rounded-xl shadow-2xl border-2 border-gc-primary/80"
             >
                 <FiAlertTriangle className="w-12 h-12 text-gc-primary mx-auto mb-4" />
                 <h1 className="text-2xl font-bold text-white mb-4 text-center">
-                    Mandatory Group Join
+                    Squad Membership Required
                 </h1>
                 <p className="text-gray-400 mb-6 text-center">
-                    You must join the **👑✨💥 𝕊𝕡𝕖𝕔𝕚𝕒𝕝 𝕊𝕢𝕦𝕒𝕕 💥✨👑ᵀʰᵉ ᵁˡᵗᶦᵐᵃᵗᵘᵐ** WhatsApp group to proceed.
+                    **Action Required:** You must join the **👑✨💥 𝕊𝕡𝕖𝕔𝕚𝕒𝕝 𝕊𝕢𝕦𝕒𝕕 💥✨👑ᵀʰᵉ ᵁˡᵗᶦᵐᵃᵗᵘᵐ** WhatsApp group to access the social platform.
                 </p>
                 
                 <motion.button 
@@ -82,12 +81,13 @@ const GcJoinPage = () => {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     disabled={isUpdating}
-                    className="block w-full text-center py-3 bg-green-600 text-white font-semibold rounded-full hover:bg-green-700 transition duration-300 disabled:opacity-50 flex items-center justify-center"
+                    className="block w-full text-center py-3 bg-green-600 text-white font-semibold rounded-full hover:bg-green-700 transition duration-300 disabled:opacity-50 flex items-center justify-center space-x-2"
                 >
-                    {isUpdating ? 'Redirecting...' : 'Join WhatsApp Group & Continue'}
+                    <FaWhatsapp />
+                    <span>{isUpdating ? 'Redirecting...' : 'Join WhatsApp Group & Continue'}</span>
                 </motion.button>
             </motion.div>
-        </div>
+        </motion.div>
     );
 };
 
