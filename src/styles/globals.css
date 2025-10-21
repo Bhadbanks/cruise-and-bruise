@@ -2,30 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Apply the "GC Vibe" Gradient Background and modern font */
-body {
-    @apply bg-gc-dark text-gray-100;
+html {
+  /* Apply the custom gradient vibe to the entire page */
+  @apply bg-gc-vibe text-gray-100;
 }
 
-/* Global Gradient Background (GC Vibe) */
-#__next {
-    @apply min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900;
-}
-
-/* Custom Scrollbar for a sleek look */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #374151; /* Gray-700 */
-}
-
-::-webkit-scrollbar-thumb {
-  background: #E91E63; /* Pink (gc-primary) */
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #9C27B0; /* Purple (gc-secondary) */
+/* Ensure smooth scrolling and a full-height layout */
+html, body, #__next {
+  height: 100%;
 }
