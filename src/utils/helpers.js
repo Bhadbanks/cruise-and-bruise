@@ -1,119 +1,29 @@
-// src/utils/helpers.js
-import { db } from "./firebase";
-import {
-  collection,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  getDocs,
-  addDoc,
-  doc,
-  setDoc,
-  serverTimestamp,
-  getDoc,
-} from "firebase/firestore";
+// Helper functions for common tasks and external links
+import { toast } from 'react-hot-toast'; // Assuming you use react-hot-toast for notifications
 
-/* -------------------------
-   POSTS & ANNOUNCEMENTS
-   ------------------------- */
+// 🔔 Welcome Notification on registration
+export const showWelcomeNotification = (username) => {
+    toast.success(`Welcome aboard🍾, ${username}!`, {
+        duration: 5000,
+        position: 'top-right',
+    });
+};
 
-// Real-time listener for posts (caller provides callback)
-export function onPostsSnapshot(cb) {
-  const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-  return onSnapshot(q, (snap) => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-}
+// 🔗 Users must join the WhatsApp GC automatically after registration
+export const autoJoinWhatsAppGC = () => {
+    const gcLink = process.env.NEXT_PUBLIC_GC_WHATSAPP_LINK;
+    const gcName = process.env.NEXT_PUBLIC_GC_NAME;
+    if (gcLink) {
+        // Open in a new tab to avoid interrupting the main app flow
+        window.open(gcLink, '_blank');
+        toast(`Remember to join the official group: ${gcName}`, {
+            icon: '🔗',
+            duration: 8000,
+        });
+    }
+};
 
-export async function fetchPostsOnce() {
-  const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-export async function createPost({ uid, username, text, type = "userPost" }) {
-  return addDoc(collection(db, "posts"), {
-    uid,
-    username,
-    text,
-    type,
-    likes: [],
-    comments: [],
-    createdAt: serverTimestamp(),
-  });
-}
-
-/* -------------------------
-   ANNOUNCEMENTS (admin)
-   ------------------------- */
-
-export function onAnnouncementsSnapshot(cb) {
-  const q = query(collection(db, "announcements"), orderBy("createdAt", "desc"));
-  return onSnapshot(q, (snap) => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-}
-
-export async function createAnnouncement({ title, message, adminUid, adminName }) {
-  return addDoc(collection(db, "announcements"), {
-    title,
-    message,
-    adminUid,
-    adminName,
-    createdAt: serverTimestamp(),
-    type: "announcement",
-  });
-}
-
-/* -------------------------
-   USERS
-   ------------------------- */
-
-export async function fetchUsersOnce() {
-  const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-export async function getUserByUsername(username) {
-  const usersRef = collection(db, "users");
-  const q = query(usersRef, where("username", "==", username));
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-  const d = snap.docs[0];
-  return { id: d.id, ...d.data() };
-}
-
-export async function getUserByUid(uid) {
-  const d = await getDoc(doc(db, "users", uid));
-  return d.exists() ? { id: d.id, ...d.data() } : null;
-}
-
-export async function createOrUpdateUser(uid, data) {
-  return setDoc(doc(db, "users", uid), { ...data, updatedAt: serverTimestamp() }, { merge: true });
-}
-
-/* -------------------------
-   PUBLIC CHAT
-   ------------------------- */
-
-export function onPublicChat(cb) {
-  const q = query(collection(db, "public_chat"), orderBy("createdAt", "asc"));
-  return onSnapshot(q, (snap) => cb(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-}
-
-export async function sendPublicMessage({ uid, username, text }) {
-  return addDoc(collection(db, "public_chat"), {
-    uid,
-    username,
-    text,
-    createdAt: serverTimestamp(),
-  });
-}
-
-/* -------------------------
-   NEWS (calls /api/news on client)
-   ------------------------- */
-
-export async function fetchNewsClient() {
-  const res = await fetch("/api/news");
-  if (!res.ok) return [];
-  return res.json();
-}
+// 🔗 Developer/Admin contact link
+export const getDevWhatsAppLink = () => {
+    return process.env.NEXT_PUBLIC_DEV_WHATSAPP_CONTACT;
+};
