@@ -5,37 +5,33 @@ import PostCard from './PostCard';
 import { useAuth } from '../utils/AuthContext';
 import { FiRefreshCw } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast'; // Ensure you have this import for notifications
+import toast from 'react-hot-toast';
 
 const UnifiedFeed = () => {
     const { userProfile } = useAuth();
     const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState('all'); // 'all', 'user', 'admin', 'news'
+    const [filter, setFilter] = useState('all'); // 'all', 'user', 'admin_announcement', 'external_news'
 
     useEffect(() => {
-        // 1. Setup Firestore Listener for User/Admin Posts
-        // Query for user and admin posts, ordered chronologically
         const postsQuery = query(collection(db, "posts"), orderBy("timestamp", "desc"));
 
-        // Use an async function inside the effect to handle the API call
         const unsubscribe = onSnapshot(postsQuery, async (snapshot) => {
             const firestorePosts = snapshot.docs.map(doc => ({ 
                 id: doc.id, 
                 ...doc.data(),
-                timestamp: doc.data().timestamp?.seconds || Date.now() / 1000 // Handle serverTimestamp not set yet
+                // Normalize timestamp for sorting (seconds since epoch)
+                timestamp: doc.data().timestamp?.seconds || Date.now() / 1000 
             }));
             
-            // 2. Fetching External News from the API Route (Integrated Logic)
+            // 2. Fetch External News from the API Route
             let externalNews = [];
             try {
-                const newsResponse = await fetch('/api/news'); // Calling the Next.js API route
-                
+                const newsResponse = await fetch('/api/news'); 
                 if (newsResponse.ok) {
                     externalNews = await newsResponse.json();
                 } else {
                     console.error('Failed to fetch external news from API route.');
-                    // Optionally, show a toast error only for news fetching
                 }
             } catch (error) {
                 console.error('Network error fetching external news:', error);
@@ -61,7 +57,7 @@ const UnifiedFeed = () => {
             setLoading(false);
         });
 
-        return () => unsubscribe(); // Cleanup listener on component unmount
+        return () => unsubscribe(); // Cleanup listener
     }, [filter]);
 
 
@@ -80,7 +76,7 @@ const UnifiedFeed = () => {
                     <p>Loading the Special Squad feed...</p>
                 </div>
             ) : posts.length === 0 ? (
-                <p className="text-center text-gray-400 p-10">No posts found. Be the first to post!</p>
+                <p className="text-center text-gray-400 p-10">No posts found.</p>
             ) : (
                 posts.map(post => <PostCard key={post.id} post={post} userProfile={userProfile} />)
             )}
