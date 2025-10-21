@@ -1,45 +1,21 @@
+// next.config.js
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  swcMinify: true,
-
-  // ✅ Explicitly expose safe environment variables to the client
-  env: {
-    NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    NEXT_PUBLIC_FIREBASE_MSG_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MSG_SENDER_ID,
-    NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-    NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-    NEXT_PUBLIC_ADMIN_EMAIL: process.env.NEXT_PUBLIC_ADMIN_EMAIL,
-    NEXT_PUBLIC_ADMIN_PASS: process.env.NEXT_PUBLIC_ADMIN_PASS,
-    NEXT_PUBLIC_GC_LINK: process.env.NEXT_PUBLIC_GC_LINK,
-    NEWS_API_KEY: process.env.NEWS_API_KEY,
-    NEXT_PUBLIC_WHATSAPP_CONTACT: process.env.NEXT_PUBLIC_WHATSAPP_CONTACT,
-  },
-
-  // ✅ Optimize for serverless Vercel functions
-  output: 'standalone',
-
-  // ✅ Disable telemetry collection
-  telemetry: false,
-
-  // ✅ Custom build options for smoother deployments
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production', // removes console.logs in prod
-  },
-
-  // ✅ Allow remote image domains (if you display news/user avatars)
+  // Add image domains if you plan to use external URLs (e.g., from Firestore storage)
+  // For a basic setup, this might not be strictly necessary if all images are in /public
   images: {
-    domains: [
-      'firebasestorage.googleapis.com',
-      'lh3.googleusercontent.com',
-      'avatars.githubusercontent.com',
-      'images.unsplash.com',
-      'cdn.pixabay.com'
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'firebasestorage.googleapis.com',
+      },
+      // You can add other remote image hosts here if needed
     ],
   },
+  
+  // Important for older packages or complex setups, but often good to include
+  reactStrictMode: true,
 };
 
 module.exports = nextConfig;
