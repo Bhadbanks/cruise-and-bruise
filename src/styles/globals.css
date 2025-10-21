@@ -1,73 +1,31 @@
-/* styles/globals.css - global styles and basic utilities */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-/* base reset */
-* { box-sizing: border-box; }
-html, body, #__next { height: 100%; }
+/* Apply the "GC Vibe" Gradient Background and modern font */
 body {
-  margin: 0;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    Roboto, "Helvetica Neue", Arial;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(180deg, #fff7fb 0%, #fff9f2 100%);
-  color: #111827;
+    @apply bg-gc-dark text-gray-100;
 }
 
-/* links */
-a { color: inherit; text-decoration: none; }
-
-/* container helpers */
-.container { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
-
-/* inputs/buttons */
-input, textarea, select {
-  font-family: inherit;
-  border: 1px solid rgba(0,0,0,0.08);
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.9);
-  transition: box-shadow .15s ease, transform .08s ease;
-}
-input:focus, textarea:focus, select:focus {
-  outline: none;
-  box-shadow: 0 6px 18px rgba(255,100,150,0.08);
-  transform: translateY(-1px);
+/* Global Gradient Background (GC Vibe) */
+#__next {
+    @apply min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900;
 }
 
-/* buttons */
-button {
-  font-weight: 700;
-  border-radius: 12px;
-  padding: 8px 14px;
-  border: none;
-}
-.btn-primary {
-  background: linear-gradient(90deg,#ff5e8d,#ffb86b);
-  color: #081124;
-  box-shadow: 0 10px 30px rgba(255,110,160,0.08);
+/* Custom Scrollbar for a sleek look */
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-/* cards */
-.card {
-  background: rgba(255,255,255,0.85);
-  border-radius: 14px;
-  padding: 14px;
-  box-shadow: 0 10px 30px rgba(6,7,12,0.06);
-  border: 1px solid rgba(0,0,0,0.03);
+::-webkit-scrollbar-track {
+  background: #374151; /* Gray-700 */
 }
 
-/* small helpers */
-.text-muted { color: rgba(17,24,39,0.6); }
-.center { text-align:center; }
-
-/* animations */
-@keyframes float-up {
-  0% { transform: translateY(0); opacity: 0.9; }
-  50% { transform: translateY(-20px); opacity: 0.6; }
-  100% { transform: translateY(0); opacity: 0.9; }
+::-webkit-scrollbar-thumb {
+  background: #E91E63; /* Pink (gc-primary) */
+  border-radius: 4px;
 }
 
-/* responsive */
-@media (max-width: 880px) {
-  .container { padding: 0 12px; }
+::-webkit-scrollbar-thumb:hover {
+  background: #9C27B0; /* Purple (gc-secondary) */
 }
