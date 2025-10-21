@@ -1,13 +1,32 @@
+/* src/styles/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html {
-  /* Apply the custom gradient vibe to the entire page */
-  @apply bg-gc-vibe text-gray-100;
+/* Base background for the whole application */
+body {
+  @apply bg-gc-vibe text-white;
 }
 
-/* Ensure smooth scrolling and a full-height layout */
-html, body, #__next {
-  height: 100%;
+/* Custom scrollbar for better aesthetics */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #374151; /* Gray-700 */
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #E91E63; /* gc-primary */
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #ad1457; /* darker pink */
+}
+
+/* Ensure all links have smooth transitions */
+a {
+  @apply transition duration-200;
 }
