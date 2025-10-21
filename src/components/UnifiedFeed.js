@@ -1,95 +1,102 @@
-import { useState, useEffect } from "react";
-import { collection, addDoc, getDocs, serverTimestamp, query, orderBy } from "firebase/firestore";
-import { db, auth } from "../utils/firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { useEffect, useState } from 'react';
+import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
+import { db } from '../utils/firebase';
+import PostCard from './PostCard';
+import { useAuth } from '../utils/AuthContext';
+import { FiRefreshCw } from 'react-icons/fi';
+import { motion } from 'framer-motion';
 
-export default function UnifiedFeed() {
-  const [posts, setPosts] = useState([]);
-  const [newPost, setNewPost] = useState("");
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
+const UnifiedFeed = () => {
+    const { userProfile } = useAuth();
+    const [posts, setPosts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState('all'); // 'all', 'user', 'admin', 'news'
 
-  // Fetch posts from Firestore
-  useEffect(() => {
-    const fetchPosts = async () => {
-      const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
-      const querySnapshot = await getDocs(q);
-      setPosts(querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    };
-    fetchPosts();
-  }, []);
+    useEffect(() => {
+        // 1. Setup Firestore Listener for User/Admin Posts
+        // Query for user and admin posts, ordered chronologically
+        const postsQuery = query(collection(db, "posts"), orderBy("timestamp", "desc"));
 
-  // Auth listener
-  useEffect(() => {
-    onAuthStateChanged(auth, (u) => setUser(u));
-  }, []);
+        const unsubscribe = onSnapshot(postsQuery, (snapshot) => {
+            const firestorePosts = snapshot.docs.map(doc => ({ 
+                id: doc.id, 
+                ...doc.data(),
+                timestamp: doc.data().timestamp?.seconds || Date.now() / 1000 // Handle serverTimestamp not set yet
+            }));
+            
+            // 2. Simulate Fetching External News (This should be done via /api/news for production)
+            // For now, we manually create a dummy external news post for demonstration.
+            const externalNews = [{
+                id: 'news-1',
+                type: 'external_news',
+                title: 'AI breakthrough announced by Google',
+                content: 'A major development in generative AI was just revealed, exciting the tech world. Read more on the source link...',
+                authorUsername: 'News Bot',
+                authorAvatar: '/bot-avatar.png',
+                timestamp: Date.now() / 1000 - 3600, // 1 hour ago
+                likes: [],
+                commentCount: 0,
+                isVerified: true
+            }];
 
-  const handlePost = async (e) => {
-    e.preventDefault();
-    if (!newPost.trim()) return;
-    setLoading(true);
-    try {
-      await addDoc(collection(db, "posts"), {
-        text: newPost,
-        author: user?.displayName || "Anonymous",
-        email: user?.email,
-        timestamp: serverTimestamp(),
-        likes: 0,
-        type: "userPost",
-      });
-      setNewPost("");
-      alert("✨ Post shared successfully!");
-      window.location.reload();
-    } catch (err) {
-      console.error("Error posting:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+            const combinedFeed = [...firestorePosts, ...externalNews];
+            
+            // Sort combined feed chronologically (newest first)
+            const sortedFeed = combinedFeed.sort((a, b) => b.timestamp - a.timestamp);
 
-  return (
-    <section className="bg-white/60 backdrop-blur-xl p-6 rounded-2xl shadow-lg">
-      {/* Post box */}
-      {user && (
-        <form onSubmit={handlePost} className="mb-6">
-          <textarea
-            className="w-full border border-pink-300 rounded-lg p-3 focus:ring-2 focus:ring-pink-400 outline-none"
-            placeholder="What's new in the Squad? 💬"
-            value={newPost}
-            onChange={(e) => setNewPost(e.target.value)}
-            required
-          ></textarea>
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-3 bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 text-white px-6 py-2 rounded-lg font-semibold hover:scale-105 transition-transform"
-          >
-            {loading ? "Posting..." : "Post"}
-          </button>
-        </form>
-      )}
+            // Apply filter
+            let filteredFeed = sortedFeed;
+            if (filter !== 'all') {
+                filteredFeed = sortedFeed.filter(post => post.type === filter);
+            }
 
-      {/* Feed */}
-      <div className="space-y-4">
-        {posts.length > 0 ? (
-          posts.map((post) => (
-            <div
-              key={post.id}
-              className="bg-white border border-pink-100 rounded-xl p-4 shadow-sm hover:shadow-lg transition"
-            >
-              <p className="text-gray-800">{post.text}</p>
-              <p className="text-sm text-gray-500 mt-2">
-                — <span className="font-semibold text-pink-600">{post.author}</span> |{" "}
-                {post.type === "announcement" && (
-                  <span className="text-yellow-600 font-semibold">📢 Announcement</span>
-                )}
-              </p>
+            setPosts(filteredFeed);
+            setLoading(false);
+        }, (error) => {
+            console.error("Error listening to posts:", error);
+            toast.error("Failed to load real-time feed.");
+            setLoading(false);
+        });
+
+        return () => unsubscribe(); // Cleanup listener on component unmount
+    }, [filter]);
+
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-start space-x-4 p-4 bg-gray-800 rounded-xl shadow-lg">
+                <FilterButton currentFilter={filter} setFilter={setFilter} type="all" label="Unified Feed" />
+                <FilterButton currentFilter={filter} setFilter={setFilter} type="user" label="User Posts" />
+                <FilterButton currentFilter={filter} setFilter={setFilter} type="admin_announcement" label="Announcements" />
+                <FilterButton currentFilter={filter} setFilter={setFilter} type="external_news" label="News" />
             </div>
-          ))
-        ) : (
-          <p className="text-center text-gray-500">No posts yet. Be the first to share! 🚀</p>
-        )}
-      </div>
-    </section>
-  );
-              }
+
+            {loading ? (
+                <div className="text-center p-10 text-gray-400">
+                    <FiRefreshCw className="w-8 h-8 mx-auto mb-2 animate-spin text-gc-primary" />
+                    <p>Loading the Special Squad feed...</p>
+                </div>
+            ) : posts.length === 0 ? (
+                <p className="text-center text-gray-400 p-10">No posts found. Be the first to post!</p>
+            ) : (
+                posts.map(post => <PostCard key={post.id} post={post} userProfile={userProfile} />)
+            )}
+        </div>
+    );
+};
+
+const FilterButton = ({ currentFilter, setFilter, type, label }) => (
+    <motion.button
+        whileHover={{ scale: 1.05 }}
+        onClick={() => setFilter(type)}
+        className={`px-4 py-2 rounded-full text-sm font-semibold transition duration-200 
+            ${currentFilter === type 
+                ? 'bg-gc-primary text-white shadow-lg' 
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}`
+        }
+    >
+        {label}
+    </motion.button>
+);
+
+export default UnifiedFeed;
