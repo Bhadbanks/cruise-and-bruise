@@ -1,55 +1,43 @@
-// src/pages/_app.js (Modification)
+// src/pages/_app.js
+import Head from 'next/head';
+import { AuthProvider } from '../utils/AuthContext';
+import '../styles/globals.css';
+import { Toaster } from 'react-hot-toast';
+import dynamic from 'next/dynamic';
+import GlobalLoading from '../components/GlobalLoading';
 
-// ... (existing imports and functions)
+// --- The FIX: Dynamic Import for the Shell Component ---
+// This prevents the server from prerendering the components that rely on the 'useAuth' hook.
+const DynamicAppShell = dynamic(() => import('../components/AppShell'), {
+    ssr: false, // <-- CRITICAL: Disable Server-Side Rendering
+    loading: () => <GlobalLoading />, // Show the loading spinner while waiting for the client to hydrate
+});
 
-// App Shell Component (Includes Header, Footer, Sidebar for non-auth pages)
-const AppShell = ({ Component, pageProps }) => {
-    const { currentUser, loading, userProfile, isAdmin } = useAuth();
-    const router = useRouter();
-    const needsFullLayout = !NO_LAYOUT_PATHS.includes(router.pathname);
-
-    // Show global loading if Auth state is unresolved
-    if (loading) {
-        return <GlobalLoading />;
-    }
-    
-    // Check 1: Redirect unauthenticated users
-    if (!currentUser) {
-        if (router.pathname !== '/login' && router.pathname !== '/register') {
-             router.push('/login');
-             return null;
-        }
-    }
-    
-    // Check 2: Redirect Admin to admin dashboard
-    if (isAdmin && router.pathname !== '/admin') {
-         router.push('/admin');
-         return null;
-    }
-    
-    // Check 3: Redirect if GC not joined (The most robust check)
-    if (currentUser && userProfile && !userProfile.hasJoinedGC && router.pathname !== '/gc-join') {
-        router.push('/gc-join');
-        return null;
-    }
-
-
-    // Auth and Login/Register pages render without the shell
-    if (!needsFullLayout || router.pathname === '/gc-join') {
-        return (
-            <motion.div
-                key={router.pathname}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-            >
-                <Component {...pageProps} />
-            </motion.div>
-        );
-    }
-    
-    // All other pages get the full social app layout
-    // ... (rest of the AppShell component is the same)
+// --- CRITICAL FIX: Ensure MyApp is the DEFAULT export ---
+function MyApp({ Component, pageProps }) {
+    return (
+        <AuthProvider>
+            <Head>
+                <title>Special Squad - The Ultimatum</title>
+                <link rel="icon" href="/logo.png" />
+            </Head>
+            
+            {/* The actual application content, loaded only on the client */}
+            <DynamicAppShell Component={Component} pageProps={pageProps} />
+            
+            <Toaster 
+                position="top-center"
+                toastOptions={{
+                    style: {
+                        background: '#1C1525',
+                        color: '#fff',
+                        border: '1px solid #E91E63',
+                    }
+                }}
+            />
+        </AuthProvider>
+    );
 }
 
-// ... (rest of MyApp function is the same)
+// THIS MUST BE THE DEFAULT EXPORT
+export default MyApp;
