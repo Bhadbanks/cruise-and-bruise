@@ -1,130 +1,180 @@
-// src/pages/index.js (Home Page)
-import Head from 'next/head';
-import Header from '../components/Header';
-import Footer from '../components/Footer'; // New
-import { useAuth } from '../utils/AuthContext';
-import { useRouter } from 'next/router';
-import CreatePost from '../components/CreatePost';
-import UnifiedFeed from '../components/UnifiedFeed';
-import dynamic from 'next/dynamic';
+// src/pages/index.js
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiAlertTriangle } from 'react-icons/fi';
-import Link from 'next/link';
+import { FiFeather, FiSend, FiStar, FiClock } from 'react-icons/fi';
+import { FaCrown, FaCheckCircle } from 'react-icons/fa';
+import { useAuth } from '../utils/AuthContext';
+import { db } from '../utils/firebase';
+import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import toast from 'react-hot-toast';
 
-// Dynamically import Particles to prevent server-side rendering issues
-const ParticlesContainer = dynamic(() => import('../components/ParticlesContainer'), { ssr: false });
+// Dummy Post Component (Replace with your feature-complete Post component later)
+const PostCard = ({ post }) => {
+    const isVerified = post.isVerified || post.isAdmin;
+    const isAdmin = post.isAdmin;
 
-// WhatsApp Group Link
-const GC_LINK = "https://chat.whatsapp.com/Ll3R7OUbdjq3HsehVpskpz";
-
-const Home = () => {
-    const { currentUser, loading, userProfile, isAdmin, shouldRedirectToGC, GC_LINK: whatsappGC } = useAuth();
-    const router = useRouter();
-
-    if (loading) {
-        return <div className="min-h-screen flex items-center justify-center text-white bg-gc-vibe">
-            <motion.div 
-                animate={{ rotate: 360 }} 
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                className="w-12 h-12 border-4 border-t-4 border-gc-primary border-t-transparent rounded-full"
-            ></motion.div>
-        </div>;
-    }
-    
-    // 1. Redirect unauthenticated users
-    if (!currentUser) {
-        router.push('/login');
-        return null;
-    }
-
-    // 2. Admin redirect
-    if (isAdmin) {
-        router.push('/admin');
-        return null;
-    }
-    
-    // 3. GC Join Check (CRITICAL FIX)
-    if (userProfile && !userProfile.hasJoinedGC) {
-        return (
-            <div className="min-h-screen flex items-center justify-center p-4 bg-gray-900">
-                <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: "spring", stiffness: 100 }}
-                    className="max-w-md w-full bg-gray-800 p-8 rounded-xl shadow-2xl border-2 border-gc-primary"
-                >
-                    <FiAlertTriangle className="w-12 h-12 text-gc-primary mx-auto mb-4" />
-                    <h1 className="text-2xl font-bold text-white mb-4 text-center">
-                        Mandatory Group Join
-                    </h1>
-                    <p className="text-gray-400 mb-6 text-center">
-                        You must join the 👑✨💥 **𝕊𝕡𝕖𝕔𝕚𝕒𝕝 𝕊𝕢𝕦𝕒𝕕** 💥✨👑ᵀʰᵉ ᵁˡᵗᶦᵐᵃᵗᵘᵐ WhatsApp group to access the main feed.
+    return (
+        <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="p-4 border-b border-gc-border bg-gc-card hover:bg-gc-card/80 transition duration-300 cursor-pointer shadow-lg"
+        >
+            <div className="flex items-start space-x-3">
+                <img 
+                    src={post.userProfilePic || '/default-avatar.png'} 
+                    alt={post.username} 
+                    className="w-10 h-10 rounded-full object-cover border-2 border-gc-primary"
+                />
+                <div className="flex-1">
+                    <div className="flex items-center space-x-1">
+                        <span className={`font-bold ${isAdmin ? 'text-gc-admin' : 'text-white'}`}>
+                            {post.username}
+                        </span>
+                        {isAdmin && <FaCrown className="w-3 h-3 text-gc-admin" title="Admin" />}
+                        {isVerified && !isAdmin && <FaCheckCircle className="w-3 h-3 text-gc-verified" title="Verified" />}
+                        <span className="text-gray-500 text-xs">· {post.timeAgo || 'Just now'}</span>
+                        {post.isAnnouncement && (
+                            <FiStar className="w-4 h-4 text-gc-primary ml-auto" title="Announcement" />
+                        )}
+                    </div>
+                    
+                    <p className={`mt-1 text-gray-200 ${post.isAnnouncement ? 'font-semibold' : ''}`}>
+                        {post.content}
                     </p>
-                    <Link href={whatsappGC} legacyBehavior>
-                        <motion.a 
-                            target="_blank"
-                            onClick={() => {
-                                // Assume joining, so update flag locally for immediate redirect
-                                userProfile.hasJoinedGC = true; 
-                                setTimeout(() => router.reload(), 1000); // Reload after 1s
-                            }}
+
+                    {/* Engagement Bar (Dummy for now) */}
+                    <div className="flex items-center justify-between text-gray-500 mt-3 text-sm">
+                        <motion.button whileHover={{ scale: 1.1 }} className="flex items-center space-x-1 hover:text-red-500">
+                            <span>❤️ 0</span>
+                        </motion.button>
+                        <motion.button whileHover={{ scale: 1.1 }} className="flex items-center space-x-1 hover:text-gc-primary">
+                            <span>💬 0</span>
+                        </motion.button>
+                        <motion.button whileHover={{ scale: 1.1 }} className="flex items-center space-x-1 hover:text-green-500">
+                            <span>🔁 0</span>
+                        </motion.button>
+                    </div>
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+
+// Main Feed Component
+const HomePage = () => {
+    const { userProfile, currentUser } = useAuth();
+    const [postContent, setPostContent] = useState('');
+    const [posts, setPosts] = useState([]);
+    const [loadingPosts, setLoadingPosts] = useState(true);
+
+    // --- Real-Time Feed Listener ---
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const q = query(collection(db, 'posts'), orderBy('timestamp', 'desc'), limit(50));
+        
+        // Setup real-time listener
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedPosts = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                timeAgo: 'Real-time' // Simplified time for MVP
+            }));
+            setPosts(fetchedPosts);
+            setLoadingPosts(false);
+        }, (error) => {
+            console.error("Error fetching posts: ", error);
+            toast.error("Failed to load feed.");
+            setLoadingPosts(false);
+        });
+
+        // Cleanup the listener on unmount
+        return () => unsubscribe();
+    }, [currentUser]);
+
+    // --- Post Creation Handler ---
+    const handlePost = async (e) => {
+        e.preventDefault();
+        if (!postContent.trim() || !userProfile) {
+            toast.error("Post content cannot be empty.");
+            return;
+        }
+
+        try {
+            await addDoc(collection(db, 'posts'), {
+                uid: userProfile.uid,
+                username: userProfile.username,
+                userProfilePic: userProfile.profilePicUrl || '/default-avatar.png',
+                content: postContent.trim(),
+                timestamp: serverTimestamp(),
+                likes: 0,
+                comments: 0,
+                shares: 0,
+                isVerified: userProfile.isVerified || false,
+                isAdmin: userProfile.isAdmin || false,
+                isAnnouncement: false, // Only admin can set this via admin panel
+            });
+            
+            setPostContent('');
+            toast.success("Post sent! It's live in the Squad feed.");
+
+        } catch (error) {
+            console.error("Error adding document: ", error);
+            toast.error("Failed to post. Try again.");
+        }
+    };
+
+    return (
+        <div className="w-full">
+            {/* Post Creation Box */}
+            <motion.div 
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className="p-4 sticky top-16 lg:top-0 border-b border-gc-border bg-gc-vibe/95 backdrop-blur-sm z-30 shadow-2xl"
+            >
+                <h1 className="text-2xl font-bold text-white mb-4 flex items-center space-x-2">
+                    <FiClock className='text-gc-secondary' /> <span>Squad Feed</span>
+                </h1>
+                <form onSubmit={handlePost} className="flex flex-col space-y-3">
+                    <textarea
+                        value={postContent}
+                        onChange={(e) => setPostContent(e.target.value)}
+                        placeholder={`What's the vibe, @${userProfile?.username || 'member'}?`}
+                        rows="3"
+                        className="w-full p-3 bg-gc-vibe border border-gc-secondary/50 rounded-xl text-white placeholder-gray-500 focus:ring-1 focus:ring-gc-primary focus:border-gc-primary transition duration-200"
+                        maxLength={280}
+                    />
+                    <div className="flex justify-end">
+                        <motion.button
+                            type="submit"
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            className="block w-full text-center py-3 bg-green-600 text-white font-semibold rounded-full hover:bg-green-700 transition duration-300"
+                            disabled={!postContent.trim()}
+                            className="flex items-center space-x-2 px-6 py-2 bg-gc-primary text-white font-bold rounded-full disabled:bg-gray-700 disabled:cursor-not-allowed transition duration-300 shadow-gc-glow"
                         >
-                            Join WhatsApp Group Now
-                        </motion.a>
-                    </Link>
-                </motion.div>
-            </div>
-        );
-    }
-    
-    // Normal Feed View
-    return (
-        <div className="min-h-screen relative">
-            <Head><title>Feed | Special Squad</title></Head>
-            
-            {/* Premium Particles Background */}
-            <div className="absolute inset-0 z-0 hidden md:block opacity-30">
-                {userProfile?.isVerified && <ParticlesContainer />}
-            </div>
-
-            <Header />
-
-            {/* Main Content Area: Responsive Layout (Feed centered, right sidebar hidden on mobile) */}
-            <div className="flex justify-center pt-16 lg:pt-20">
-                <main className="w-full max-w-7xl relative z-10 flex">
-                    {/* Left/Middle Column (Feed and Create Post) */}
-                    <motion.div 
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.5 }}
-                        className="w-full lg:w-[600px] xl:w-[700px] border-x border-gray-700 mx-auto lg:mx-0"
-                    >
-                        <div className="p-4 space-y-6">
-                            <h1 className="text-2xl font-extrabold text-white border-b pb-2 border-gray-700 sticky top-0 bg-gc-vibe/90 backdrop-blur-sm z-20">
-                                Unified Squad Feed
-                            </h1>
-                            <CreatePost />
-                            <UnifiedFeed />
-                        </div>
-                    </motion.div>
-
-                    {/* Right Column (Placeholder for Trending/Widgets - Hidden on small screens) */}
-                    <div className="hidden xl:block xl:w-[350px] p-4 sticky top-20 h-screen">
-                         <div className="bg-gray-800 p-4 rounded-xl shadow-lg border border-gray-700">
-                            <h2 className="text-xl font-bold text-white mb-4">Trending</h2>
-                            <p className="text-gray-400">#TheUltimatum</p>
-                            <p className="text-gray-400">#GcVibeCheck</p>
-                        </div>
+                            <FiFeather />
+                            <span>Post</span>
+                        </motion.button>
                     </div>
-                </main>
+                </form>
+            </motion.div>
+
+            {/* Post Stream */}
+            <div className="mt-2">
+                {loadingPosts ? (
+                    <p className="text-center text-gray-500 py-10">Loading the vibe...</p>
+                ) : posts.length === 0 ? (
+                    <p className="text-center text-gray-500 py-10">No posts yet. Be the first to start the vibe!</p>
+                ) : (
+                    posts.map(post => (
+                        <PostCard key={post.id} post={post} />
+                    ))
+                )}
             </div>
-            
-            <Footer />
         </div>
     );
 };
 
-export default Home;
+export default HomePage;
