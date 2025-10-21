@@ -1,29 +1,23 @@
-// Helper functions for common tasks and external links
-import { toast } from 'react-hot-toast'; // Assuming you use react-hot-toast for notifications
-
-// 🔔 Welcome Notification on registration
-export const showWelcomeNotification = (username) => {
-    toast.success(`Welcome aboard🍾, ${username}!`, {
-        duration: 5000,
-        position: 'top-right',
-    });
+// Function to redirect users to the official WhatsApp Group after successful registration
+export const redirectToWhatsApp = () => {
+    // The link is hardcoded here, but in a real app, it should be in .env.local
+    const link = "https://chat.whatsapp.com/Ll3R7OUbdjq3HsehVpskpz"; 
+    window.open(link, '_blank');
 };
 
-// 🔗 Users must join the WhatsApp GC automatically after registration
-export const autoJoinWhatsAppGC = () => {
-    const gcLink = process.env.NEXT_PUBLIC_GC_WHATSAPP_LINK;
-    const gcName = process.env.NEXT_PUBLIC_GC_NAME;
-    if (gcLink) {
-        // Open in a new tab to avoid interrupting the main app flow
-        window.open(gcLink, '_blank');
-        toast(`Remember to join the official group: ${gcName}`, {
-            icon: '🔗',
-            duration: 8000,
-        });
-    }
+// Function to open a chat with the Admin/Developer
+export const contactAdmin = () => {
+    // Admin WhatsApp contract: wa.me/2348082591190
+    window.open("https://wa.me/2348082591190", '_blank');
 };
 
-// 🔗 Developer/Admin contact link
-export const getDevWhatsAppLink = () => {
-    return process.env.NEXT_PUBLIC_DEV_WHATSAPP_CONTACT;
+// Utility to upload file and return URL
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from './firebase';
+
+export const uploadFile = async (file, path) => {
+    if (!file) return null;
+    const storageRef = ref(storage, path);
+    await uploadBytes(storageRef, file);
+    return getDownloadURL(storageRef);
 };
