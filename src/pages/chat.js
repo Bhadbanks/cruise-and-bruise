@@ -1,189 +1,149 @@
 // src/pages/chat.js
-import { useState, useEffect } from 'react';
-import Head from 'next/head';
-import Header from '../components/Header';
-import { useAuth } from '../utils/AuthContext';
-import { useRouter } from 'next/router';
-import { collection, query, orderBy, limit, addDoc, serverTimestamp, onSnapshot, getDocs, where } from 'firebase/firestore';
-import { db } from '../utils/firebase';
-import { FiSend, FiUsers, FiMessageCircle, FiLock } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { FiMessageCircle, FiSearch } from 'react-icons/fi';
+import { db } from '../utils/firebase';
+import { collection, query, getDocs } from 'firebase/firestore';
+import { useAuth } from '../utils/AuthContext';
+import ChatWindow from '../components/ChatWindow';
+import GlobalLoading from '../components/GlobalLoading';
 import toast from 'react-hot-toast';
 
-const ChatHub = () => {
-    const { currentUser, loading, userProfile } = useAuth();
-    const router = useRouter();
-    const { user: dmUsername } = router.query;
+const ChatHubPage = () => {
+    const { userProfile } = useAuth();
+    const [allMembers, setAllMembers] = useState([]);
+    const [filteredMembers, setFilteredMembers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [targetUser, setTargetUser] = useState(null);
 
-    const [messageInput, setMessageInput] = useState('');
-    const [publicMessages, setPublicMessages] = useState([]);
-    const [recipientProfile, setRecipientProfile] = useState(null);
-    const [isPrivate, setIsPrivate] = useState(false);
-
-    // Redirect unauthenticated users
+    // --- Fetch All Users (to start a chat) ---
     useEffect(() => {
-        if (!loading && !currentUser) {
-            router.push('/login');
-        }
-    }, [loading, currentUser, router]);
+        const fetchMembers = async () => {
+            try {
+                const q = query(collection(db, 'users'));
+                const querySnapshot = await getDocs(q);
+                
+                const membersList = querySnapshot.docs
+                    .map(doc => ({ id: doc.id, ...doc.data() }))
+                    // Exclude the current user from the chat list
+                    .filter(member => member.uid !== userProfile?.uid); 
+                
+                setAllMembers(membersList);
+                setFilteredMembers(membersList);
 
-    // 1. Fetch Recipient Profile for DM
-    useEffect(() => {
-        setIsPrivate(!!dmUsername);
-        setRecipientProfile(null); // Reset recipient
-
-        if (dmUsername) {
-            const fetchRecipient = async () => {
-                const q = query(collection(db, "users"), where("username", "==", dmUsername));
-                const snapshot = await getDocs(q);
-                if (!snapshot.empty) {
-                    setRecipientProfile(snapshot.docs[0].data());
-                } else {
-                    toast.error(`User @${dmUsername} not found.`);
-                    router.push('/chat'); // Fall back to public chat
-                }
-            };
-            fetchRecipient();
-        }
-    }, [dmUsername, router]);
-
-    // 2. Real-time Public Chat Listener
-    useEffect(() => {
-        if (!currentUser || isPrivate) return;
-
-        const messagesQuery = query(
-            collection(db, "chats/public/messages"),
-            orderBy("timestamp", "asc"),
-            limit(50)
-        );
-
-        const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
-            const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setPublicMessages(messages);
-        }, (error) => {
-            console.error("Error fetching public messages:", error);
-            toast.error("Failed to load chat history.");
-        });
-
-        return () => unsubscribe();
-    }, [currentUser, isPrivate]);
-
-
-    const sendMessage = async (e) => {
-        e.preventDefault();
-        const content = messageInput.trim();
-        if (!content || !userProfile) return;
-
-        setMessageInput('');
-
-        try {
-            // For this blueprint, we only implement the Public Chat send
-            if (!isPrivate) {
-                await addDoc(collection(db, "chats/public/messages"), {
-                    content: content,
-                    authorUid: userProfile.uid,
-                    authorUsername: userProfile.username,
-                    authorAvatar: userProfile.profilePicUrl,
-                    timestamp: serverTimestamp(),
-                });
-            } else {
-                // Future DM logic would go here:
-                toast.error("Private DMs are a premium feature (Placeholder).");
-                console.log(`DM attempt to ${recipientProfile.username}: ${content}`);
+            } catch (error) {
+                console.error("Error fetching members for chat:", error);
+                toast.error("Failed to load contacts.");
             }
+            setLoading(false);
+        };
 
-        } catch (error) {
-            console.error("Error sending message:", error);
-            toast.error("Failed to send message.");
+        if (userProfile) {
+            fetchMembers();
+        } else {
+            setLoading(false);
         }
-    };
+    }, [userProfile]);
     
-    // Component for a single message bubble
-    const MessageBubble = ({ message }) => {
-        const isMe = message.authorUid === currentUser.uid;
-        return (
-            <div className={`flex mb-4 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                <motion.div
-                    initial={{ opacity: 0, x: isMe ? 20 : -20 }} 
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className={`max-w-xs lg:max-w-md p-3 rounded-xl shadow-md ${
-                        isMe ? 'bg-gc-primary/80 text-white rounded-br-none' : 'bg-gray-700 text-gray-100 rounded-tl-none'
-                    }`}
-                >
-                    {!isMe && (
-                        <Link href={`/profile/${message.authorUsername}`} legacyBehavior>
-                             <a className="font-bold text-sm mb-1 block hover:underline text-gc-primary">
-                                @{message.authorUsername}
-                            </a>
-                        </Link>
-                    )}
-                    <p className="whitespace-pre-wrap">{message.content}</p>
-                    <span className="text-xs mt-1 block text-right opacity-60">
-                         {message.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Sending...'}
-                    </span>
-                </motion.div>
-            </div>
+    // --- Search Filter ---
+    useEffect(() => {
+        if (searchTerm.trim() === '') {
+            setFilteredMembers(allMembers);
+            return;
+        }
+
+        const lowerCaseSearch = searchTerm.toLowerCase();
+        const results = allMembers.filter(member => 
+            member.username?.toLowerCase().includes(lowerCaseSearch) ||
+            member.email?.toLowerCase().includes(lowerCaseSearch)
         );
+        setFilteredMembers(results);
+    }, [searchTerm, allMembers]);
+
+    const handleOpenChat = (user) => {
+        setTargetUser(user);
     };
 
-    if (loading || !currentUser) return null;
+    const handleCloseChat = () => {
+        setTargetUser(null);
+    };
+
+    if (loading) {
+        return <GlobalLoading />;
+    }
 
     return (
-        <div className="min-h-screen">
-            <Head><title>{isPrivate ? `DM with @${dmUsername}` : 'Public Chat Hub'} | Special Squad</title></Head>
-            <Header />
+        <div className="w-full h-full min-h-[85vh]">
+            <motion.h1 
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className="text-3xl font-extrabold text-white mb-6 flex items-center space-x-3 border-b border-gc-border pb-3"
+            >
+                <FiMessageCircle className="text-gc-primary" />
+                <span>Squad Chat Hub</span>
+            </motion.h1>
 
-            <main className="pl-0 lg:pl-72 py-8 px-4 lg:px-6">
-                <div className="max-w-4xl mx-auto space-y-4">
-                    <h1 className="text-3xl font-extrabold mb-4 text-white flex items-center space-x-2 border-b pb-2 border-gray-700">
-                        {isPrivate ? (
-                            <>
-                                <FiLock className="text-red-400" />
-                                <span>Private DM: @{recipientProfile?.username || dmUsername}</span>
-                            </>
-                        ) : (
-                            <>
-                                <FiUsers className="text-gc-primary" />
-                                <span>Public Squad Chat Hub</span>
-                            </>
-                        )}
-                    </h1>
+            <div className="flex h-full min-h-[75vh] bg-gc-card rounded-xl shadow-2xl border border-gc-secondary/50">
+                
+                {/* Left Panel: Conversation List / User List */}
+                <div className={`p-4 border-r border-gc-border ${targetUser ? 'hidden lg:block lg:w-1/3' : 'w-full'}`}>
+                    <div className="relative mb-4">
+                        <FiSearch className="absolute left-3 top-3.5 text-gray-400" />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Find a member to chat with..."
+                            className="w-full pl-10 pr-4 py-2 bg-gc-vibe border border-gc-border rounded-full text-white placeholder-gray-500 focus:ring-1 focus:ring-gc-secondary transition"
+                        />
+                    </div>
                     
-                    {/* Message Display Area */}
-                    <div className="bg-gray-800 h-[60vh] rounded-xl p-4 flex flex-col shadow-2xl">
-                        <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar">
-                            {publicMessages.length === 0 && !isPrivate ? (
-                                <p className="text-center text-gray-400 pt-10">Start the conversation! No messages yet.</p>
-                            ) : (
-                                publicMessages.map(msg => <MessageBubble key={msg.id} message={msg} />)
-                            )}
-                        </div>
-
-                        {/* Input Form */}
-                        <form onSubmit={sendMessage} className="mt-4 flex space-x-3 border-t pt-4 border-gray-700">
-                            <input
-                                type="text"
-                                placeholder={isPrivate ? `Message @${recipientProfile?.username}...` : "Send a message to the public chat..."}
-                                value={messageInput}
-                                onChange={(e) => setMessageInput(e.target.value)}
-                                className="flex-1 p-3 bg-gray-700 text-white rounded-full placeholder-gray-400 focus:ring-2 focus:ring-gc-primary focus:outline-none"
-                            />
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                type="submit"
-                                disabled={!messageInput.trim()}
-                                className="px-6 py-3 bg-gc-primary text-white rounded-full font-bold hover:bg-pink-700 transition duration-200 disabled:opacity-50"
-                            >
-                                <FiSend className="w-5 h-5" />
-                            </motion.button>
-                        </form>
+                    <div className="overflow-y-auto h-[60vh] space-y-2 custom-scrollbar">
+                        {filteredMembers.length > 0 ? (
+                            filteredMembers.map(member => (
+                                <motion.div
+                                    key={member.uid}
+                                    whileHover={{ backgroundColor: '#2b2233', x: 5 }}
+                                    onClick={() => handleOpenChat(member)}
+                                    className={`flex items-center space-x-3 p-3 rounded-xl cursor-pointer transition duration-200 
+                                                ${targetUser?.uid === member.uid ? 'bg-gc-secondary/50' : 'hover:bg-gc-vibe'}`}
+                                >
+                                    <img 
+                                        src={member.profilePicUrl || '/default-avatar.png'} 
+                                        alt={member.username} 
+                                        className="w-10 h-10 rounded-full object-cover border border-gc-primary"
+                                    />
+                                    <div className='truncate'>
+                                        <p className="font-semibold text-white truncate">@{member.username}</p>
+                                        <p className="text-xs text-gray-400 truncate">Tap to start a conversation...</p>
+                                    </div>
+                                </motion.div>
+                            ))
+                        ) : (
+                            <p className="text-center text-gray-500 py-10">No members match your search.</p>
+                        )}
                     </div>
                 </div>
-            </main>
+
+                {/* Right Panel: Chat Window */}
+                <div className={`p-0 ${targetUser ? 'w-full' : 'hidden lg:block lg:w-2/3'}`}>
+                    {targetUser ? (
+                        <ChatWindow 
+                            targetUser={targetUser} 
+                            onCloseChat={handleCloseChat} 
+                        />
+                    ) : (
+                        <div className="flex items-center justify-center h-full flex-col text-gray-500">
+                            <FiMessageCircle className="w-16 h-16 mb-4 text-gc-secondary" />
+                            <p className="text-lg">Select a user to start chatting!</p>
+                            <p className="text-sm">Real-time vibes, just for you and the Squad.</p>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 };
 
-export default ChatHub;
+export default ChatHubPage;
