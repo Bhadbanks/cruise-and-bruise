@@ -1,170 +1,184 @@
-import { useEffect, useState } from 'react';
+// src/pages/chat.js
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
-import { useRouter } from 'next/router';
 import Header from '../components/Header';
 import { useAuth } from '../utils/AuthContext';
-import { collection, query, where, onSnapshot, orderBy, limit, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { useRouter } from 'next/router';
+import { collection, query, orderBy, limit, addDoc, serverTimestamp, onSnapshot, getDocs, where } from 'firebase/firestore';
 import { db } from '../utils/firebase';
-import { FiMessageSquare, FiUsers, FiSearch, FiSend, FiRefreshCw } from 'react-icons/fi';
-import ChatThread from '../components/ChatThread';
-import MessageList from '../components/MessageList';
+import { FiSend, FiUsers, FiMessageCircle, FiLock } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
-// Define the Public Chat ID
-const PUBLIC_CHAT_ID = "public_squad_chat";
-
-const Chat = () => {
-    const { currentUser, userProfile, loading: authLoading } = useAuth();
+const ChatHub = () => {
+    const { currentUser, loading, userProfile } = useAuth();
     const router = useRouter();
+    const { user: dmUsername } = router.query;
 
-    const [threads, setThreads] = useState([]); // List of 1-on-1 DM threads
+    const [messageInput, setMessageInput] = useState('');
     const [publicMessages, setPublicMessages] = useState([]);
-    const [loadingThreads, setLoadingThreads] = useState(true);
-    const [activeChat, setActiveChat] = useState({ type: 'public', id: PUBLIC_CHAT_ID, partner: null }); // {type: 'public' | 'dm', id, partner: userProfile}
+    const [recipientProfile, setRecipientProfile] = useState(null);
+    const [isPrivate, setIsPrivate] = useState(false);
 
-    // --- Access Control ---
+    // Redirect unauthenticated users
     useEffect(() => {
-        if (!authLoading && !currentUser) {
+        if (!loading && !currentUser) {
             router.push('/login');
         }
-    }, [authLoading, currentUser, router]);
+    }, [loading, currentUser, router]);
 
-    // --- 1. Fetch DM Threads ---
+    // 1. Fetch Recipient Profile for DM
     useEffect(() => {
-        if (!currentUser) return;
-        setLoadingThreads(true);
+        setIsPrivate(!!dmUsername);
+        setRecipientProfile(null); // Reset recipient
 
-        // Query threads where the current user is a participant
-        const threadsQuery = query(
-            collection(db, 'threads'),
-            where('participants', 'array-contains', currentUser.uid),
-            orderBy('lastMessageAt', 'desc'),
-            limit(20)
-        );
-
-        const unsubscribe = onSnapshot(threadsQuery, async (snapshot) => {
-            const fetchedThreads = [];
-            for (const docSnapshot of snapshot.docs) {
-                const threadData = docSnapshot.data();
-                
-                // Identify the partner's UID
-                const partnerUid = threadData.participants.find(uid => uid !== currentUser.uid);
-                let partnerProfile = null;
-
-                if (partnerUid) {
-                    // Fetch partner's profile
-                    const partnerDoc = await getDoc(doc(db, 'users', partnerUid));
-                    if (partnerDoc.exists()) {
-                        partnerProfile = partnerDoc.data();
-                    }
+        if (dmUsername) {
+            const fetchRecipient = async () => {
+                const q = query(collection(db, "users"), where("username", "==", dmUsername));
+                const snapshot = await getDocs(q);
+                if (!snapshot.empty) {
+                    setRecipientProfile(snapshot.docs[0].data());
+                } else {
+                    toast.error(`User @${dmUsername} not found.`);
+                    router.push('/chat'); // Fall back to public chat
                 }
+            };
+            fetchRecipient();
+        }
+    }, [dmUsername, router]);
 
-                fetchedThreads.push({
-                    id: docSnapshot.id,
-                    ...threadData,
-                    partner: partnerProfile
-                });
-            }
-
-            setThreads(fetchedThreads);
-            setLoadingThreads(false);
-        }, (error) => {
-            console.error("Error fetching threads:", error);
-            toast.error("Failed to load chat threads.");
-            setLoadingThreads(false);
-        });
-
-        return () => unsubscribe();
-    }, [currentUser]);
-
-    // --- 2. Fetch Public Chat Messages ---
+    // 2. Real-time Public Chat Listener
     useEffect(() => {
-        // Simple listener for the public chat collection
-        const publicChatQuery = query(
-            collection(db, 'messages', PUBLIC_CHAT_ID, 'content'),
-            orderBy('timestamp', 'asc'),
-            limit(100) // Limit to the last 100 messages
+        if (!currentUser || isPrivate) return;
+
+        const messagesQuery = query(
+            collection(db, "chats/public/messages"),
+            orderBy("timestamp", "asc"),
+            limit(50)
         );
 
-        const unsubscribe = onSnapshot(publicChatQuery, (snapshot) => {
+        const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
             const messages = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             setPublicMessages(messages);
         }, (error) => {
             console.error("Error fetching public messages:", error);
+            toast.error("Failed to load chat history.");
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [currentUser, isPrivate]);
 
-    const handleSelectChat = (type, id, partner = null) => {
-        setActiveChat({ type, id, partner });
+
+    const sendMessage = async (e) => {
+        e.preventDefault();
+        const content = messageInput.trim();
+        if (!content || !userProfile) return;
+
+        setMessageInput('');
+
+        try {
+            // For this blueprint, we only implement the Public Chat send
+            if (!isPrivate) {
+                await addDoc(collection(db, "chats/public/messages"), {
+                    content: content,
+                    authorUid: userProfile.uid,
+                    authorUsername: userProfile.username,
+                    authorAvatar: userProfile.profilePicUrl,
+                    timestamp: serverTimestamp(),
+                });
+            } else {
+                // Future DM logic would go here:
+                toast.error("Private DMs are a premium feature (Placeholder).");
+                console.log(`DM attempt to ${recipientProfile.username}: ${content}`);
+            }
+
+        } catch (error) {
+            console.error("Error sending message:", error);
+            toast.error("Failed to send message.");
+        }
+    };
+    
+    // Component for a single message bubble
+    const MessageBubble = ({ message }) => {
+        const isMe = message.authorUid === currentUser.uid;
+        return (
+            <div className={`flex mb-4 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                <motion.div
+                    initial={{ opacity: 0, x: isMe ? 20 : -20 }} 
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className={`max-w-xs lg:max-w-md p-3 rounded-xl shadow-md ${
+                        isMe ? 'bg-gc-primary/80 text-white rounded-br-none' : 'bg-gray-700 text-gray-100 rounded-tl-none'
+                    }`}
+                >
+                    {!isMe && (
+                        <Link href={`/profile/${message.authorUsername}`} legacyBehavior>
+                             <a className="font-bold text-sm mb-1 block hover:underline text-gc-primary">
+                                @{message.authorUsername}
+                            </a>
+                        </Link>
+                    )}
+                    <p className="whitespace-pre-wrap">{message.content}</p>
+                    <span className="text-xs mt-1 block text-right opacity-60">
+                         {message.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Sending...'}
+                    </span>
+                </motion.div>
+            </div>
+        );
     };
 
-    if (authLoading || !currentUser) return null;
+    if (loading || !currentUser) return null;
 
     return (
         <div className="min-h-screen">
-            <Head><title>Chat Hub | Special Squad</title></Head>
+            <Head><title>{isPrivate ? `DM with @${dmUsername}` : 'Public Chat Hub'} | Special Squad</title></Head>
             <Header />
 
-            <main className="pl-72 flex h-screen pt-4">
-                <div className="flex-1 flex max-w-6xl mx-auto border border-gray-700 rounded-xl overflow-hidden bg-gray-800 shadow-2xl">
-
-                    {/* Left Panel: Threads List */}
-                    <div className="w-80 border-r border-gray-700 flex flex-col">
-                        <h2 className="text-xl font-bold p-4 flex items-center space-x-2 border-b border-gray-700 text-gc-primary">
-                            <FiMessageSquare /> <span>Conversations</span>
-                        </h2>
-                        
-                        {/* Public Chat Button */}
-                        <motion.div 
-                            whileHover={{ backgroundColor: '#374151' }}
-                            className={`p-4 cursor-pointer border-b border-gray-700 transition duration-150 ${activeChat.type === 'public' ? 'bg-gc-primary/20' : 'bg-gray-700/50'}`}
-                            onClick={() => handleSelectChat('public', PUBLIC_CHAT_ID)}
-                        >
-                            <div className="flex items-center space-x-3">
-                                <FiUsers className="w-5 h-5 text-green-400" />
-                                <span className="font-semibold">Public Squad Chat</span>
-                            </div>
-                        </motion.div>
-
-                        {/* DM Threads */}
-                        <div className="flex-1 overflow-y-auto">
-                            {loadingThreads ? (
-                                <div className="text-center p-6 text-gray-400">
-                                    <FiRefreshCw className="w-6 h-6 mx-auto mb-2 animate-spin text-gc-primary" />
-                                </div>
-                            ) : threads.length === 0 ? (
-                                <p className="text-center text-gray-400 p-6">Start a DM from a member's profile!</p>
+            <main className="pl-0 lg:pl-72 py-8 px-4 lg:px-6">
+                <div className="max-w-4xl mx-auto space-y-4">
+                    <h1 className="text-3xl font-extrabold mb-4 text-white flex items-center space-x-2 border-b pb-2 border-gray-700">
+                        {isPrivate ? (
+                            <>
+                                <FiLock className="text-red-400" />
+                                <span>Private DM: @{recipientProfile?.username || dmUsername}</span>
+                            </>
+                        ) : (
+                            <>
+                                <FiUsers className="text-gc-primary" />
+                                <span>Public Squad Chat Hub</span>
+                            </>
+                        )}
+                    </h1>
+                    
+                    {/* Message Display Area */}
+                    <div className="bg-gray-800 h-[60vh] rounded-xl p-4 flex flex-col shadow-2xl">
+                        <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar">
+                            {publicMessages.length === 0 && !isPrivate ? (
+                                <p className="text-center text-gray-400 pt-10">Start the conversation! No messages yet.</p>
                             ) : (
-                                threads.map(thread => (
-                                    <ChatThread 
-                                        key={thread.id} 
-                                        thread={thread} 
-                                        isActive={activeChat.id === thread.id}
-                                        onSelect={() => handleSelectChat('dm', thread.id, thread.partner)} 
-                                    />
-                                ))
+                                publicMessages.map(msg => <MessageBubble key={msg.id} message={msg} />)
                             )}
                         </div>
-                    </div>
 
-                    {/* Right Panel: Message Area */}
-                    <div className="flex-1 flex flex-col">
-                        <div className="p-4 border-b border-gray-700">
-                            <h3 className="font-bold text-lg text-white">
-                                {activeChat.type === 'public' ? 'The Squad General Chat' : `Chat with @${activeChat.partner?.username || 'Loading...'}`}
-                            </h3>
-                        </div>
-                        
-                        <MessageList 
-                            messages={activeChat.type === 'public' ? publicMessages : threads.find(t => t.id === activeChat.id)?.messages || []}
-                            chatType={activeChat.type}
-                            threadId={activeChat.id}
-                            currentUserUid={currentUser.uid}
-                            userProfile={userProfile}
-                        />
+                        {/* Input Form */}
+                        <form onSubmit={sendMessage} className="mt-4 flex space-x-3 border-t pt-4 border-gray-700">
+                            <input
+                                type="text"
+                                placeholder={isPrivate ? `Message @${recipientProfile?.username}...` : "Send a message to the public chat..."}
+                                value={messageInput}
+                                onChange={(e) => setMessageInput(e.target.value)}
+                                className="flex-1 p-3 bg-gray-700 text-white rounded-full placeholder-gray-400 focus:ring-2 focus:ring-gc-primary focus:outline-none"
+                            />
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                type="submit"
+                                disabled={!messageInput.trim()}
+                                className="px-6 py-3 bg-gc-primary text-white rounded-full font-bold hover:bg-pink-700 transition duration-200 disabled:opacity-50"
+                            >
+                                <FiSend className="w-5 h-5" />
+                            </motion.button>
+                        </form>
                     </div>
                 </div>
             </main>
@@ -172,4 +186,4 @@ const Chat = () => {
     );
 };
 
-export default Chat;
+export default ChatHub;
