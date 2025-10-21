@@ -4,10 +4,9 @@ import { auth, db } from './firebase';
 import { 
     onAuthStateChanged, 
     signOut, 
-    sendPasswordResetEmail,
     signInWithEmailAndPassword
 } from 'firebase/auth';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -19,9 +18,27 @@ export const AuthProvider = ({ children }) => {
     const [userProfile, setUserProfile] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
+    const [globalSettings, setGlobalSettings] = useState({ 
+        GC_LINK: "https://chat.whatsapp.com/Ll3R7OUbdjq3HsehVpskpz", // Default fallback
+        ADMIN_UID: "DEFAULT_ADMIN_UID_SET_ON_FIRST_LOGIN" // Must be updated after first login
+    });
 
-    // Hardcoded WhatsApp Group Link
-    const GC_LINK = "https://chat.whatsapp.com/Ll3R7OUbdjq3HsehVpskpz";
+    // Real-time listener for Global Settings (GC Link, Admin UID)
+    useEffect(() => {
+        const settingsRef = doc(db, 'settings', 'general');
+        const unsubscribeSettings = onSnapshot(settingsRef, (docSnap) => {
+            if (docSnap.exists()) {
+                setGlobalSettings(prev => ({
+                    ...prev,
+                    ...docSnap.data()
+                }));
+            }
+        }, (error) => {
+            console.error("Error fetching settings:", error);
+            // Fallback to hardcoded defaults if Firestore fails
+        });
+        return () => unsubscribeSettings();
+    }, []);
 
     // Listener for Auth State and Profile
     useEffect(() => {
@@ -29,21 +46,14 @@ export const AuthProvider = ({ children }) => {
             setCurrentUser(user);
             
             if (user) {
-                // 1. Set up real-time profile listener
                 const profileRef = doc(db, 'users', user.uid);
                 const unsubscribeProfile = onSnapshot(profileRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        const profileData = { uid: docSnap.id, ...docSnap.data() };
-                        setUserProfile(profileData);
-                        
-                        // Admin check: true if isAdmin field is true
-                        const isUserAdmin = profileData.isAdmin || false;
-                        setIsAdmin(isUserAdmin); 
-                    } else {
-                        // Profile missing but auth exists (shouldn't happen after register)
-                        setUserProfile(null);
-                        setIsAdmin(false);
-                    }
+                    const profileData = docSnap.exists() ? { uid: docSnap.id, ...docSnap.data() } : null;
+                    setUserProfile(profileData);
+                    
+                    // Admin check: true if isAdmin field is true OR if UID matches hardcoded ADMIN_UID
+                    const isUserAdmin = profileData?.isAdmin || (user.uid === globalSettings.ADMIN_UID);
+                    setIsAdmin(isUserAdmin); 
                     setLoading(false);
                 }, (error) => {
                     console.error("Error listening to profile:", error);
@@ -60,14 +70,8 @@ export const AuthProvider = ({ children }) => {
         });
 
         return () => unsubscribeAuth();
-    }, []);
+    }, [globalSettings.ADMIN_UID]); // Re-run if Admin UID setting changes
 
-    // Function to check if user must join the GC
-    const shouldRedirectToGC = () => {
-        return userProfile && !userProfile.hasJoinedGC;
-    };
-    
-    // Auth functions wrapped for toast messages
     const login = async (email, password) => {
         try {
             await signInWithEmailAndPassword(auth, email, password);
@@ -85,10 +89,9 @@ export const AuthProvider = ({ children }) => {
             toast.error("Logout Failed: " + error.message);
         }
     };
-
-    const resetPassword = (email) => {
-        return sendPasswordResetEmail(auth, email);
-    };
+    
+    // Developer Admin Identification
+    const DEV_ADMIN_EMAIL = "dev@specialsquad.com"; // Use this email to register and get the first admin UID
 
     const value = {
         currentUser,
@@ -97,15 +100,14 @@ export const AuthProvider = ({ children }) => {
         isAdmin,
         login,
         logout,
-        resetPassword,
-        shouldRedirectToGC,
-        GC_LINK,
+        GC_LINK: globalSettings.GC_LINK, // Use dynamic link
         DEV_CONTACT: "wa.me/2348082591190",
+        DEV_ADMIN_EMAIL, // For instructions
     };
 
     return (
         <AuthContext.Provider value={value}>
-            {!loading && children}
+            {children}
         </AuthContext.Provider>
     );
 };
