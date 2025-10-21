@@ -3,8 +3,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../utils/AuthContext';
 import { motion } from 'framer-motion';
-import { FiHome, FiMessageCircle, FiUsers, FiLogOut, FiMenu, FiX, FiCrown, FiSettings } from 'react-icons/fi';
-import { FaCrown } from 'react-icons/fa';
+// --- FIX: FiCrown is not exported, replaced with FaCrown or FiSettings ---
+import { FiHome, FiMessageCircle, FiUsers, FiLogOut, FiMenu, FiX, FiSettings } from 'react-icons/fi';
+import { FaCrown } from 'react-icons/fa'; // Correct import for the crown icon
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 
@@ -24,14 +25,12 @@ const Header = () => {
         router.push('/login');
     };
     
-    // Toggle function for mobile menu
     const toggleMenu = () => {
         setIsMobileMenuOpen(!isMobileMenuOpen);
     };
 
     if (!currentUser) return null;
 
-    // Use current path to determine active link
     const isActive = (path) => router.pathname === path;
 
     return (
@@ -42,7 +41,8 @@ const Header = () => {
                     {/* Logo & Title (Fixed size) */}
                     <Link href="/" legacyBehavior>
                         <a className="flex items-center space-x-2">
-                            <img src="/logo.png" alt="Special Squad Logo" className="w-8 h-8 object-contain" />
+                            {/* LOGO SIZE FIX: W-8 H-8 is small */}
+                            <img src="/logo.png" alt="Special Squad Logo" className="w-10 h-10 object-contain" />
                             <span className="text-xl font-extrabold text-gc-primary hidden sm:block">Special Squad</span>
                         </a>
                     </Link>
@@ -81,7 +81,8 @@ const Header = () => {
                                     <span className="text-white text-sm font-semibold pr-2 hidden xl:block">
                                         @{userProfile?.username || 'user'}
                                     </span>
-                                    {userProfile?.isAdmin && <FaCrown className="w-4 h-4 text-yellow-400 mr-2" />}
+                                    {/* USE FaCrown HERE */}
+                                    {userProfile?.isAdmin && <FaCrown className="w-4 h-4 text-yellow-400 mr-2" />} 
                                 </a>
                             </Link>
                         </motion.div>
@@ -116,7 +117,7 @@ const Header = () => {
                                 className="w-16 h-16 rounded-full object-cover border-2 border-gc-primary" 
                             />
                             <div className="text-center">
-                                <span className="text-white font-bold block">@{userProfile?.username}</span>
+                                <span className="text-white font-bold block">@{userProfile?.username || 'user'}</span> {/* FIX @user issue */}
                                 <span className="text-xs text-gray-400 block">
                                     {userProfile?.isAdmin ? 'Squad Admin' : userProfile?.isVerified ? 'Verified Member' : 'Member'}
                                 </span>
@@ -148,7 +149,8 @@ const Header = () => {
                                 ? 'bg-yellow-600 text-white shadow-lg shadow-yellow-600/30' 
                                 : 'text-yellow-400 hover:bg-gray-700/70 hover:text-yellow-300'
                             }`}>
-                                <FiCrown className="w-5 h-5" />
+                                {/* USE FaCrown or a simple FiSettings here */}
+                                <FaCrown className="w-5 h-5" /> 
                                 <span>Admin Panel</span>
                             </a>
                         </Link>
@@ -180,8 +182,8 @@ const Header = () => {
                 >
                     {[
                         ...navItems, 
-                        { name: 'Profile', icon: FiSettings, path: `/profile/${userProfile?.username}` },
-                        ...(isAdmin ? [{ name: 'Admin Panel', icon: FiCrown, path: '/admin' }] : []),
+                        { name: 'Profile', icon: FiSettings, path: `/profile/${userProfile?.username || 'user'}` },
+                        ...(isAdmin ? [{ name: 'Admin Panel', icon: FaCrown, path: '/admin' }] : []), // Using FaCrown component here
                     ].map(item => (
                         <Link key={item.name} href={item.path} legacyBehavior>
                             <a 
