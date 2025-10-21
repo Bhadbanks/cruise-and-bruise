@@ -1,220 +1,197 @@
-import { useEffect, useState } from 'react';
+// src/pages/admin.js
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
-import { useRouter } from 'next/router';
 import Header from '../components/Header';
 import { useAuth } from '../utils/AuthContext';
-import { collection, query, getDocs, doc, updateDoc, where, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useRouter } from 'next/router';
+import { collection, addDoc, serverTimestamp, query, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../utils/firebase';
-import { FiUsers, FiLock, FiStar, FiRefreshCw, FiAlertTriangle, FiSend } from 'react-icons/fi';
-import { FaCrown, FaCheckCircle, FaBan, FaTrash } from 'react-icons/fa';
+import { FiCrown, FiSend, FiUserCheck, FiXCircle, FiUserPlus, FiUsers } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
-const Admin = () => {
-    const { userProfile, isAdmin, loading: authLoading } = useAuth();
+const AdminPanel = () => {
+    const { currentUser, loading, isAdmin } = useAuth();
     const router = useRouter();
+    const [announcementContent, setAnnouncementContent] = useState('');
+    const [users, setUsers] = useState([]);
+    const [dataLoading, setDataLoading] = useState(true);
+    const [announcementLoading, setAnnouncementLoading] = useState(false);
 
-    const [allUsers, setAllUsers] = useState([]);
-    const [loadingUsers, setLoadingUsers] = useState(true);
-    const [announcement, setAnnouncement] = useState({ title: '', content: '' });
-    const [loadingAnnouncement, setLoadingAnnouncement] = useState(false);
-
-    // --- Access Control ---
+    // Security Check: Redirect if not an Admin
     useEffect(() => {
-        if (!authLoading && !isAdmin) {
+        if (!loading && !currentUser) {
+            router.push('/login');
+        } else if (!loading && currentUser && !isAdmin) {
+            // If logged in but not admin, redirect to home
+            router.push('/'); 
             toast.error("Access Denied: Admin privileges required.");
-            router.push('/');
         }
-    }, [authLoading, isAdmin, router]);
-    
-    // --- Data Fetching ---
-    const fetchAllUsers = async () => {
-        setLoadingUsers(true);
-        try {
-            const usersCol = collection(db, 'users');
-            const usersSnapshot = await getDocs(usersCol);
-            const usersList = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            setAllUsers(usersList);
-        } catch (error) {
-            console.error("Error fetching all users:", error);
-            toast.error("Failed to load user list.");
-        } finally {
-            setLoadingUsers(false);
-        }
-    };
+    }, [loading, currentUser, isAdmin, router]);
 
+    // Fetch All Users for Management
     useEffect(() => {
         if (isAdmin) {
-            fetchAllUsers();
+            const fetchUsers = async () => {
+                const q = query(collection(db, "users"));
+                const snapshot = await getDocs(q);
+                const userList = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() }));
+                setUsers(userList);
+                setDataLoading(false);
+            };
+            fetchUsers();
         }
     }, [isAdmin]);
 
-    if (authLoading || !isAdmin) return null; // Prevent rendering if not admin or still loading
-
-    // --- Moderation Functions ---
-    const handleToggleVerification = async (user) => {
-        if (user.isAdmin) {
-            toast.error("Cannot change verification status of the main Admin user.");
-            return;
-        }
-
-        const userRef = doc(db, 'users', user.uid);
-        const newStatus = !user.isVerified;
-
-        try {
-            await updateDoc(userRef, { isVerified: newStatus });
-            toast.success(`User @${user.username} is now ${newStatus ? 'Verified' : 'Unverified'}.`);
-            fetchAllUsers(); // Refresh list
-        } catch (error) {
-            console.error("Error toggling verification:", error);
-            toast.error("Failed to update status.");
-        }
-    };
-
-    const handleDeleteUser = async (user) => {
-        if (!window.confirm(`Are you absolutely sure you want to DELETE user @${user.username}? This action is irreversible.`)) return;
-        if (user.isAdmin) {
-            toast.error("Cannot delete Admin user.");
-            return;
-        }
-
-        const userRef = doc(db, 'users', user.uid);
-        
-        try {
-            // Note: Firebase security rules should handle actual deletion of posts/data. 
-            // Here we just mark the profile as deleted/banned for front-end blocking.
-            await updateDoc(userRef, { 
-                isDeleted: true,
-                username: `deleted_user_${user.uid.substring(0, 8)}`,
-                email: `deleted_${user.email}`,
-                profilePicUrl: '/banned-avatar.png'
-            });
-            toast.success(`User @${user.username} has been blocked/deleted.`);
-            fetchAllUsers(); // Refresh list
-        } catch (error) {
-            console.error("Error deleting user:", error);
-            toast.error("Failed to delete user.");
-        }
-    };
-
-    // --- Announcement Function ---
-    const handlePublishAnnouncement = async (e) => {
+    // Handle Admin Announcement Post
+    const handlePostAnnouncement = async (e) => {
         e.preventDefault();
-        if (announcement.title.trim() === '' || announcement.content.trim() === '') {
-            toast.error("Title and content are required for an announcement.");
-            return;
-        }
+        const content = announcementContent.trim();
+        if (!content) return;
 
-        setLoadingAnnouncement(true);
-
+        setAnnouncementLoading(true);
         try {
             await addDoc(collection(db, 'posts'), {
-                authorUid: userProfile.uid,
-                authorUsername: userProfile.username,
-                authorAvatar: userProfile.profilePicUrl,
-                title: announcement.title.trim(),
-                content: announcement.content.trim(),
+                authorUid: currentUser.uid,
+                authorUsername: 'Admin', // Use a special Admin name
+                authorAvatar: '/logo.png', // Use the logo for admin posts
+                title: "Official Squad Announcement",
+                content: content,
                 timestamp: serverTimestamp(),
-                type: 'admin_announcement', // The key differentiator for the feed
+                type: 'admin_announcement', // Unique type for highlight
                 likes: [],
                 commentCount: 0,
-                isVerified: true, // Announcements are always verified
+                isVerified: true,
+                isHighlighted: true,
             });
 
-            setAnnouncement({ title: '', content: '' });
-            toast.success("Official Announcement Published!");
-
+            setAnnouncementContent('');
+            toast.success("Announcement posted successfully to the feed!");
         } catch (error) {
-            console.error("Error publishing announcement:", error);
-            toast.error("Failed to publish announcement.");
+            console.error("Error posting announcement:", error);
+            toast.error("Failed to post announcement.");
         } finally {
-            setLoadingAnnouncement(false);
+            setAnnouncementLoading(false);
+        }
+    };
+    
+    // Toggle Verified Status for a User
+    const toggleVerified = async (user) => {
+        const userDocRef = doc(db, 'users', user.uid);
+        const newStatus = !user.isVerified;
+        try {
+            await updateDoc(userDocRef, { isVerified: newStatus });
+            setUsers(prev => prev.map(u => 
+                u.uid === user.uid ? { ...u, isVerified: newStatus } : u
+            ));
+            toast.success(`${user.username} is now ${newStatus ? 'Verified' : 'Unverified'}.`);
+        } catch (error) {
+            console.error("Error updating user status:", error);
+            toast.error("Failed to update verification status.");
         }
     };
 
+    if (loading || !currentUser || !isAdmin) return null;
 
     return (
         <div className="min-h-screen">
             <Head><title>Admin Panel | Special Squad</title></Head>
             <Header />
 
-            <main className="pl-72 py-8 px-6">
-                <div className="max-w-6xl mx-auto">
-                    <h1 className="text-4xl font-extrabold mb-8 text-yellow-400 flex items-center border-b pb-4 border-gray-700">
-                        <FaCrown className="mr-3 w-8 h-8" />
-                        Admin Command Center
+            <main className="pl-0 lg:pl-72 py-8 px-4 lg:px-6">
+                <div className="max-w-6xl mx-auto space-y-10">
+                    <h1 className="text-4xl font-extrabold text-white flex items-center space-x-3 border-b pb-2 border-gray-700">
+                        <FiCrown className="text-yellow-400" />
+                        <span>👑 Admin Dashboard</span>
                     </h1>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        
-                        {/* ------------------------------------- */}
-                        {/* LEFT COLUMN: Publish Announcement */}
-                        {/* ------------------------------------- */}
-                        <div className="lg:col-span-1">
-                            <motion.div 
-                                initial={{ opacity: 0, y: 20 }} 
-                                animate={{ opacity: 1, y: 0 }}
-                                className="bg-gray-800 p-6 rounded-xl shadow-2xl border-l-4 border-gc-primary"
+                    {/* Announcement Section */}
+                    <motion.div 
+                        initial={{ opacity: 0, y: 20 }} 
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-gray-800 p-6 rounded-xl shadow-2xl border-2 border-yellow-500/50"
+                    >
+                        <h2 className="text-2xl font-bold mb-4 text-yellow-400 flex items-center">
+                            <FiSend className="mr-2" /> Post Announcement
+                        </h2>
+                        <form onSubmit={handlePostAnnouncement} className="space-y-4">
+                            <textarea
+                                placeholder="Type your official, highlighted announcement here..."
+                                value={announcementContent}
+                                onChange={(e) => setAnnouncementContent(e.target.value)}
+                                rows="4"
+                                className="w-full p-3 bg-gray-700 rounded-lg placeholder-gray-400 text-white focus:ring-2 focus:ring-yellow-400 focus:outline-none transition duration-300"
+                                required
+                            ></textarea>
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                type="submit"
+                                disabled={announcementLoading || !announcementContent.trim()}
+                                className="flex items-center space-x-2 px-6 py-2 bg-yellow-600 text-white rounded-full font-bold hover:bg-yellow-700 transition duration-200 disabled:opacity-50"
                             >
-                                <h2 className="text-2xl font-bold mb-4 flex items-center text-gc-primary">
-                                    <FiSend className="mr-2" /> Publish Announcement
-                                </h2>
-                                <form onSubmit={handlePublishAnnouncement} className="space-y-4">
-                                    <input
-                                        type="text"
-                                        placeholder="Announcement Title"
-                                        value={announcement.title}
-                                        onChange={(e) => setAnnouncement({...announcement, title: e.target.value})}
-                                        className="w-full p-3 bg-gray-700 rounded-lg placeholder-gray-400 text-white focus:ring-2 focus:ring-pink-500 focus:outline-none"
-                                        required
-                                    />
-                                    <textarea
-                                        placeholder="Official message to the entire Squad..."
-                                        value={announcement.content}
-                                        onChange={(e) => setAnnouncement({...announcement, content: e.target.value})}
-                                        rows="6"
-                                        className="w-full p-3 bg-gray-700 rounded-lg placeholder-gray-400 text-white focus:ring-2 focus:ring-pink-500 focus:outline-none"
-                                        required
-                                    ></textarea>
-                                    <motion.button
-                                        whileHover={{ scale: 1.02 }}
-                                        type="submit"
-                                        disabled={loadingAnnouncement}
-                                        className="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition disabled:opacity-50"
-                                    >
-                                        {loadingAnnouncement ? 'Sending...' : 'Publish to Feed'}
-                                    </motion.button>
-                                </form>
-                            </motion.div>
-                        </div>
-                        
-                        {/* ------------------------------------- */}
-                        {/* RIGHT COLUMN: User Management */}
-                        {/* ------------------------------------- */}
-                        <div className="lg:col-span-2">
-                            <h2 className="text-2xl font-bold mb-6 flex items-center text-white border-b pb-2 border-gray-700">
-                                <FiUsers className="mr-2" /> User Management ({allUsers.length})
-                            </h2>
-                            
-                            {loadingUsers ? (
-                                <div className="text-center p-10 text-gray-400">
-                                    <FiRefreshCw className="w-8 h-8 mx-auto mb-2 animate-spin text-gc-primary" />
-                                    <p>Loading users for moderation...</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-                                    {allUsers.map(user => (
-                                        <AdminUserRow 
-                                            key={user.uid} 
-                                            user={user} 
-                                            onToggleVerification={handleToggleVerification}
-                                            onDeleteUser={handleDeleteUser}
-                                            currentAdminUid={userProfile.uid}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                                <FiCrown />
+                                <span>{announcementLoading ? 'Sending...' : 'Publish Official Announcement'}</span>
+                            </motion.button>
+                        </form>
+                    </motion.div>
+
+                    {/* User Management Section */}
+                    <div className="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700">
+                        <h2 className="text-2xl font-bold mb-6 text-gc-primary flex items-center">
+                            <FiUsers className="mr-2" /> User Management
+                        </h2>
+                        {dataLoading ? (
+                            <p className="text-gray-400">Loading user list...</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-700">
+                                    <thead className="bg-gray-700">
+                                        <tr>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Username</th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">UID</th>
+                                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-300 uppercase">Status</th>
+                                            <th className="px-4 py-2 text-center text-xs font-medium text-gray-300 uppercase">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-700">
+                                        {users.map((user) => (
+                                            <tr key={user.uid} className="hover:bg-gray-700">
+                                                <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-white flex items-center">
+                                                    @{user.username}
+                                                    {user.isAdmin && <FaCrown className="w-3 h-3 ml-2 text-yellow-400" />}
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-400 truncate">{user.uid}</td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.isVerified ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                        {user.isVerified ? 'Verified' : 'Normal'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-medium">
+                                                    <motion.button
+                                                        whileHover={{ scale: 1.1 }}
+                                                        whileTap={{ scale: 0.9 }}
+                                                        onClick={() => toggleVerified(user)}
+                                                        disabled={user.isAdmin}
+                                                        className={`p-2 rounded-full transition duration-150 ${user.isVerified ? 'text-red-500 hover:bg-red-900/50' : 'text-green-500 hover:bg-green-900/50'} disabled:opacity-30`}
+                                                        title={user.isVerified ? "Remove Verified" : "Promote to Verified"}
+                                                    >
+                                                        {user.isVerified ? <FiXCircle /> : <FiUserCheck />}
+                                                    </motion.button>
+                                                    {/* Additional moderation controls (Delete/Ban) can be added here */}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Placeholder for Reported Posts (Future Feature) */}
+                    <div className="bg-gray-800 p-6 rounded-xl shadow-2xl border border-gray-700">
+                        <h2 className="text-2xl font-bold text-red-400">Reported Posts Moderation (Future Feature)</h2>
+                        <p className="text-gray-400 mt-2">Space reserved for moderating content.</p>
                     </div>
                 </div>
             </main>
@@ -222,49 +199,4 @@ const Admin = () => {
     );
 };
 
-// --- Reusable Component for Admin Table Row ---
-const AdminUserRow = ({ user, onToggleVerification, onDeleteUser, currentAdminUid }) => {
-    const isSelf = user.uid === currentAdminUid;
-    const isBanned = user.isDeleted; // Using isDeleted as a stand-in for 'banned'
-
-    return (
-        <div className={`flex items-center p-4 rounded-lg transition duration-200 shadow-md ${user.isAdmin ? 'bg-purple-900/50 border border-purple-500' : isBanned ? 'bg-red-900/50 border border-red-500' : 'bg-gray-700 hover:bg-gray-600'}`}>
-            <img src={user.profilePicUrl || '/default-avatar.png'} alt={user.username} className="w-10 h-10 rounded-full object-cover mr-4" />
-            
-            <div className="flex-1 min-w-0">
-                <p className={`font-bold truncate flex items-center ${user.isAdmin ? 'text-yellow-300' : ''}`}>
-                    {user.username}
-                    {user.isAdmin && <FaCrown className="w-3 h-3 ml-2 text-yellow-400" title="System Admin" />}
-                    {user.isVerified && !user.isAdmin && <FaCheckCircle className="w-3 h-3 ml-2 text-green-400" title="Verified" />}
-                </p>
-                <p className="text-sm text-gray-400 truncate">{user.email}</p>
-            </div>
-
-            <div className="flex items-center space-x-3 ml-4">
-                {/* Verification Toggle */}
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    onClick={() => onToggleVerification(user)}
-                    disabled={isSelf || user.isAdmin || isBanned}
-                    className={`px-3 py-2 text-sm rounded-full font-semibold transition ${user.isVerified ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} text-white disabled:opacity-50`}
-                >
-                    {user.isVerified ? <FiLock className='inline-block mr-1'/> : <FiStar className='inline-block mr-1'/>}
-                    {user.isVerified ? 'Unverify' : 'Verify'}
-                </motion.button>
-                
-                {/* Delete/Ban Button */}
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    onClick={() => handleDeleteUser(user)}
-                    disabled={isSelf || user.isAdmin}
-                    className={`px-3 py-2 text-sm rounded-full font-semibold transition bg-red-700 hover:bg-red-800 text-white disabled:opacity-50`}
-                >
-                    {isBanned ? <FaBan className='inline-block mr-1'/> : <FaTrash className='inline-block mr-1'/>}
-                    {isBanned ? 'Blocked' : 'Ban/Delete'}
-                </motion.button>
-            </div>
-        </div>
-    );
-};
-
-export default Admin;
+export default AdminPanel;
