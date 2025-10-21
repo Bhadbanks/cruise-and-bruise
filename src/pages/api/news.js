@@ -1,56 +1,60 @@
-// This Next.js API route securely fetches news headlines from an external provider.
-// It acts as a backend proxy to keep the API key safe.
+// src/pages/api/news.js
+import { Timestamp } from "firebase/firestore";
 
-const NEWS_API_KEY = process.env.NEWS_API_KEY;
+// Helper function to format the article data
+const formatNewsArticle = (article) => {
+    // Generate a unique ID for the external post
+    const id = `news-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    
+    // Convert article date to Firebase-compatible timestamp (seconds since epoch)
+    const timestamp = Math.floor(new Date(article.publishedAt).getTime() / 1000);
+
+    return {
+        id: id,
+        authorUid: 'API_BOT',
+        authorUsername: article.source.name || 'News Bot',
+        authorAvatar: '/bot-avatar.png', // Use the custom bot avatar
+        content: article.description || article.content || 'Click to read more.',
+        title: article.title,
+        sourceUrl: article.url,
+        timestamp: timestamp, 
+        type: 'external_news', // Identifier for filtering and styling
+        likes: [],
+        commentCount: 0,
+        isVerified: true, // Mark news source as verified
+    };
+};
 
 export default async function handler(req, res) {
-  // 1. Enforce GET method
-  if (req.method !== 'GET') {
-    return res.status(405).json({ message: 'Method Not Allowed' });
-  }
+    // IMPORTANT: API Key is retrieved securely on the server-side
+    const NEWS_API_KEY = process.env.NEWS_API_KEY; 
 
-  if (!NEWS_API_KEY) {
-    console.error("NEWS_API_KEY is not set in environment variables.");
-    return res.status(500).json({ message: 'Server configuration error: News API key missing.' });
-  }
-
-  // 2. Define the external API URL
-  // Example using NewsAPI.org. Adjust the URL based on your chosen provider.
-  const externalApiUrl = `https://newsapi.org/v2/top-headlines?country=ng&pageSize=5&apiKey=${NEWS_API_API_KEY}`;
-  
-  try {
-    const apiResponse = await fetch(externalApiUrl);
-
-    if (!apiResponse.ok) {
-      // Handle non-200 responses from the external API
-      console.error(`External API error: ${apiResponse.statusText}`);
-      return res.status(apiResponse.status).json({ message: 'Failed to fetch news from external source.' });
+    if (!NEWS_API_KEY) {
+        return res.status(500).json({ error: 'News API Key is not configured.' });
     }
 
-    const data = await apiResponse.json();
-    
-    // 3. Transform the external data into the app's internal Post format
-    const formattedNews = data.articles.map((article, index) => ({
-      // Use a unique ID structure for external items
-      id: `ext-news-${index}-${Date.now()}`, 
-      type: 'external_news', 
-      title: article.title,
-      // Use a summary or description for content
-      content: article.description || article.content || 'Click to read full article.',
-      authorUsername: article.source.name || 'External News',
-      authorAvatar: '/bot-avatar.png', // Default placeholder for external news
-      timestamp: article.publishedAt ? new Date(article.publishedAt).getTime() / 1000 : Date.now() / 1000,
-      sourceUrl: article.url,
-      isVerified: true, // Mark news as verified
-      likes: [],
-      commentCount: 0,
-    }));
+    // Example query: 'technology'
+    const query = 'social media technology'; 
+    const url = `https://newsapi.org/v2/everything?q=${query}&sortBy=publishedAt&apiKey=${NEWS_API_KEY}&pageSize=5`;
 
-    // 4. Send the successful, formatted response
-    return res.status(200).json(formattedNews);
+    try {
+        const response = await fetch(url);
+        const data = await response.json();
 
-  } catch (error) {
-    console.error('Error in news API route:', error);
-    return res.status(500).json({ message: 'Internal server error while processing news request.' });
-  }
+        if (data.status === 'ok' && data.articles) {
+            // Filter out articles with missing essential fields and format
+            const articles = data.articles
+                .filter(article => article.title && article.publishedAt)
+                .slice(0, 5) // Limit to 5 articles
+                .map(formatNewsArticle);
+            
+            return res.status(200).json(articles);
+        } else {
+            // Handle API errors
+            return res.status(response.status).json({ error: data.message || 'Failed to fetch news data.' });
+        }
+    } catch (error) {
+        console.error('Error in news API handler:', error);
+        return res.status(500).json({ error: 'Internal server error while fetching news.' });
+    }
 }
