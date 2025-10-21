@@ -1,137 +1,114 @@
 // src/pages/login.js
-import { useState, useEffect } from 'react';
-import Head from 'next/head';
-import { useAuth } from '../utils/AuthContext';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { motion } from 'framer-motion';
-import { FiLogIn, FiLock, FiMail } from 'react-icons/fi';
-import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { useAuth } from '../utils/AuthContext';
+import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
+import { FiMail, FiLock, FiLogIn } from 'react-icons/fi';
 
-const Login = () => {
+const LoginPage = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [isPasswordReset, setIsPasswordReset] = useState(false);
-    const { currentUser, loading, login, resetPassword } = useAuth();
+    const [loading, setLoading] = useState(false);
+    const { login } = useAuth();
     const router = useRouter();
-
-    // Redirect logic: If logged in, go to home
-    useEffect(() => {
-        if (!loading && currentUser) {
-            router.push('/');
-        }
-    }, [currentUser, loading, router]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (isPasswordReset) {
-            try {
-                await resetPassword(email);
-                toast.success('Password reset link sent to email!');
-                setIsPasswordReset(false);
-            } catch (error) {
-                toast.error(error.message);
-            }
-        } else {
+        setLoading(true);
+
+        // --- Admin Login Check ---
+        const isAdminLoginAttempt = email === 'admin@SpecialSquad.com' && password === 'Admin0107';
+
+        try {
             await login(email, password);
+            
+            // Redirection logic is handled robustly by the AppShell (including Admin redirect)
+            toast.success("Login successful! Welcome back.");
+            
+            // Navigate to the correct page (handled by AppShell based on userProfile)
+            router.push('/'); 
+            
+        } catch (error) {
+            let message = "Failed to log in. Check your credentials.";
+            if (error.code === 'auth/user-not-found') {
+                message = "No account found with this email.";
+            } else if (error.code === 'auth/wrong-password') {
+                message = "Incorrect password.";
+            }
+            toast.error(message);
+            setLoading(false);
         }
     };
-
-    if (loading || currentUser) return null;
 
     return (
         <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="min-h-screen flex items-center justify-center p-4 bg-gray-900"
+            className="min-h-screen flex items-center justify-center p-4 bg-gc-vibe bg-gc-gradient"
         >
-            <Head><title>{isPasswordReset ? 'Reset Password' : 'Login'} | Special Squad</title></Head>
-            
-            <motion.div 
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 120 }}
-                className="w-full max-w-md bg-gray-800 p-8 rounded-xl shadow-2xl border border-gc-secondary"
+            <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 100 }}
+                className="max-w-sm w-full bg-gc-card p-8 rounded-xl shadow-2xl border-2 border-gc-secondary/80"
             >
-                <img 
-                    src="/logo.png" 
-                    alt="Logo" 
-                    className="w-20 h-20 mx-auto mb-6 object-contain"
-                />
-                <h1 className="text-3xl font-extrabold text-white text-center mb-6 flex items-center justify-center space-x-2">
-                    <FiLogIn className="text-gc-primary" />
-                    <span>{isPasswordReset ? 'Reset Password' : 'Squad Login'}</span>
+                <img src="/logo.png" alt="Logo" className="w-16 h-16 mx-auto mb-4" />
+                <h1 className="text-3xl font-bold text-white mb-2 text-center">
+                    Squad Login
                 </h1>
+                <p className="text-gray-400 mb-6 text-center">
+                    Sign in to join the vibe.
+                </p>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="relative">
-                        <FiMail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <FiMail className="absolute left-3 top-3.5 text-gray-400" />
                         <input
                             type="email"
-                            placeholder="Email Address"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full p-3 pl-10 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-gc-primary focus:outline-none transition duration-200"
+                            placeholder="Email"
                             required
+                            className="w-full pl-10 pr-4 py-3 bg-gc-vibe border border-gc-border rounded-lg text-white placeholder-gray-500 focus:ring-1 focus:ring-gc-primary focus:border-gc-primary transition"
+                        />
+                    </div>
+                    <div className="relative">
+                        <FiLock className="absolute left-3 top-3.5 text-gray-400" />
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="Password"
+                            required
+                            className="w-full pl-10 pr-4 py-3 bg-gc-vibe border border-gc-border rounded-lg text-white placeholder-gray-500 focus:ring-1 focus:ring-gc-primary focus:border-gc-primary transition"
                         />
                     </div>
                     
-                    {!isPasswordReset && (
-                        <div className="relative">
-                            <FiLock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                            <input
-                                type="password"
-                                placeholder="Password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full p-3 pl-10 bg-gray-700 text-white rounded-lg focus:ring-2 focus:ring-gc-primary focus:outline-none transition duration-200"
-                                required
-                            />
-                        </div>
-                    )}
-                    
                     <motion.button
+                        type="submit"
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        type="submit"
-                        className="w-full py-3 bg-gc-gradient text-white font-bold rounded-full shadow-lg transition duration-300"
+                        disabled={loading}
+                        className="w-full py-3 mt-4 bg-gc-primary text-white font-bold rounded-lg shadow-lg hover:bg-gc-secondary transition duration-300 disabled:opacity-50 flex items-center justify-center space-x-2"
                     >
-                        {isPasswordReset ? 'Send Reset Email' : 'Log In'}
+                        <FiLogIn />
+                        <span>{loading ? 'Logging In...' : 'Log In'}</span>
                     </motion.button>
                 </form>
 
-                <div className="mt-6 text-center text-sm">
-                    <p className="text-gray-400">
-                        {isPasswordReset ? (
-                            <button 
-                                onClick={() => setIsPasswordReset(false)} 
-                                className="text-gc-primary hover:underline"
-                            >
-                                Back to Login
-                            </button>
-                        ) : (
-                            <>
-                                Don't have an account?{' '}
-                                <Link href="/register" legacyBehavior>
-                                    <a className="text-gc-secondary hover:underline">Register Here</a>
-                                </Link>
-                            </>
-                        )}
-                    </p>
-                    {!isPasswordReset && (
-                        <p className="mt-2">
-                            <button 
-                                onClick={() => setIsPasswordReset(true)} 
-                                className="text-gc-primary hover:underline"
-                            >
-                                Forgot Password?
-                            </button>
-                        </p>
-                    )}
-                </div>
+                <p className="text-center text-gray-500 mt-6 text-sm">
+                    New to the Squad?{' '}
+                    <Link href="/register" legacyBehavior>
+                        <a className="text-gc-primary font-semibold hover:underline">
+                            Register Here
+                        </a>
+                    </Link>
+                </p>
             </motion.div>
         </motion.div>
     );
 };
 
-export default Login;
+export default LoginPage;
