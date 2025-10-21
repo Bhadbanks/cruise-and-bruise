@@ -1,29 +1,29 @@
+// tailwind.config.js
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/pages/**/*.{js,ts,jsx,tsx}",
+    "./src/components/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
       colors: {
         'gc-primary': '#E91E63', // Deep Pink/Magenta
-        'gc-secondary': '#9C27B0', // Purple
-        'gc-dark': '#1F2937', // Dark Grey for backgrounds
+        'gc-secondary': '#9C27B0', // Deep Purple
+        'gc-vibe': '#111827', // Dark background
+        'gc-card': '#1f2937', // Slightly lighter card background
       },
       backgroundImage: {
-        'gc-vibe': 'linear-gradient(135deg, #1F2937 0%, #0F172A 100%)', // Subtle gradient background
+        'gc-gradient': 'linear-gradient(to right bottom, var(--tw-color-gc-secondary), var(--tw-color-gc-primary))',
+        'gc-vibe-bg': 'radial-gradient(circle at center, #1f2937 0%, #111827 80%)',
       },
-      keyframes: {
-        pulseBorder: {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(233, 30, 99, 0.7)' },
-          '50%': { boxShadow: '0 0 0 8px rgba(233, 30, 99, 0)' },
-        }
+      boxShadow: {
+        'gc-glow': '0 0 15px rgba(233, 30, 99, 0.5)', // Primary glow effect
       },
       animation: {
-        'border-pulse': 'pulseBorder 2s infinite', // Custom animation for admin posts
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       }
     },
   },
   plugins: [],
-};
+}
