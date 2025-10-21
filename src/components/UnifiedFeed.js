@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { collection, query, orderBy, onSnapshot, where } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import PostCard from './PostCard';
 import { useAuth } from '../utils/AuthContext';
 import { FiRefreshCw } from 'react-icons/fi';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast'; // Ensure you have this import for notifications
 
 const UnifiedFeed = () => {
     const { userProfile } = useAuth();
@@ -17,34 +18,36 @@ const UnifiedFeed = () => {
         // Query for user and admin posts, ordered chronologically
         const postsQuery = query(collection(db, "posts"), orderBy("timestamp", "desc"));
 
-        const unsubscribe = onSnapshot(postsQuery, (snapshot) => {
+        // Use an async function inside the effect to handle the API call
+        const unsubscribe = onSnapshot(postsQuery, async (snapshot) => {
             const firestorePosts = snapshot.docs.map(doc => ({ 
                 id: doc.id, 
                 ...doc.data(),
                 timestamp: doc.data().timestamp?.seconds || Date.now() / 1000 // Handle serverTimestamp not set yet
             }));
             
-            // 2. Simulate Fetching External News (This should be done via /api/news for production)
-            // For now, we manually create a dummy external news post for demonstration.
-            const externalNews = [{
-                id: 'news-1',
-                type: 'external_news',
-                title: 'AI breakthrough announced by Google',
-                content: 'A major development in generative AI was just revealed, exciting the tech world. Read more on the source link...',
-                authorUsername: 'News Bot',
-                authorAvatar: '/bot-avatar.png',
-                timestamp: Date.now() / 1000 - 3600, // 1 hour ago
-                likes: [],
-                commentCount: 0,
-                isVerified: true
-            }];
+            // 2. Fetching External News from the API Route (Integrated Logic)
+            let externalNews = [];
+            try {
+                const newsResponse = await fetch('/api/news'); // Calling the Next.js API route
+                
+                if (newsResponse.ok) {
+                    externalNews = await newsResponse.json();
+                } else {
+                    console.error('Failed to fetch external news from API route.');
+                    // Optionally, show a toast error only for news fetching
+                }
+            } catch (error) {
+                console.error('Network error fetching external news:', error);
+            }
 
+            // 3. Combine and Sort the Feed
             const combinedFeed = [...firestorePosts, ...externalNews];
             
             // Sort combined feed chronologically (newest first)
             const sortedFeed = combinedFeed.sort((a, b) => b.timestamp - a.timestamp);
 
-            // Apply filter
+            // 4. Apply Filter
             let filteredFeed = sortedFeed;
             if (filter !== 'all') {
                 filteredFeed = sortedFeed.filter(post => post.type === filter);
