@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { auth, db, checkAdminStatus } from '../utils/firebase';
 import { autoJoinWhatsAppGC, showWelcomeNotification } from '../utils/helpers';
-import { FiUser, FiMail, FiLock, FiStar, FiMapPin, FiHeart, FiPhone } from 'react-icons/fi';
+import { FiUser, FiMail, FiLock, FiStar, FiMapPin, FiHeart } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
-import toast, { Toaster } from 'react-hot-toast'; // Install react-hot-toast
+import toast, { Toaster } from 'react-hot-toast';
+import { motion } from 'framer-motion';
 
 const Register = () => {
     const router = useRouter();
@@ -18,8 +19,8 @@ const Register = () => {
         age: '',
         location: '',
         interests: '',
-        sex: 'male', 'female', 'others',
-        relationshipStatus: 'single', 'in a relationship', 'its complicated',
+        sex: 'male',
+        relationshipStatus: 'single',
         whatsappNumber: '',
     });
     const [loading, setLoading] = useState(false);
@@ -31,52 +32,76 @@ const Register = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        const { username, email, password, interests, ...profileData } = formData;
-        
-        // 1. Basic Form Validation (Add more robust validation as needed)
+
+        const { username, email, password, interests, whatsappNumber, ...profileData } = formData;
+
+        // 1️⃣ Basic Validation
         if (!username || !email || !password) {
             toast.error('Please fill in all required fields.');
             setLoading(false);
             return;
         }
 
+        // 2️⃣ Check for Duplicate Username
         try {
-            // 2. Firebase Authentication: Create User
+            const usernameExists = await getDocs(query(collection(db, 'users'), where('username', '==', username)));
+            if (!usernameExists.empty) {
+                toast.error('Username already taken. Choose another one.');
+                setLoading(false);
+                return;
+            }
+        } catch (err) {
+            console.error('Username check failed:', err);
+        }
+
+        // 3️⃣ Validate WhatsApp Number
+        const whatsappRegex = /^\+?\d{10,15}$/;
+        if (!whatsappRegex.test(whatsappNumber)) {
+            toast.error('Enter a valid WhatsApp number (e.g. +2348012345678).');
+            setLoading(false);
+            return;
+        }
+
+        try {
+            // 4️⃣ Create User with Firebase Auth
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            // 3. Determine Admin/Verified Status
+            // 5️⃣ Determine Admin / Verified
             const isAdmin = checkAdminStatus(username);
-            const isVerified = isAdmin; // Admin is automatically verified
+            const isVerified = isAdmin;
 
-            // 4. Firestore Profile Creation (Users Collection)
+            // 6️⃣ Prepare Interests Safely
+            const interestsArray = interests
+                ? interests.split(',').map(i => i.trim()).filter(Boolean)
+                : [];
+
+            // 7️⃣ Create Firestore User Document
             await setDoc(doc(db, 'users', user.uid), {
                 uid: user.uid,
-                username: username,
-                email: email,
-                ...profileData, // age, location, sex, status, whatsappNumber
-                interests: interests.split(',').map(i => i.trim()), // convert string to array
+                username,
+                email,
+                ...profileData,
+                whatsappNumber,
+                interests: interestsArray,
                 bio: 'Hey there! I just joined the Special Squad.',
-                profilePicUrl: '/default-avatar.png', // Placeholder
-                coverImgUrl: '/default-cover.jpg',  // Placeholder
+                profilePicUrl: '/default-avatar.png',
+                coverImgUrl: '/default-cover.jpg',
                 socialLinks: {},
                 followers: [],
                 following: [],
-                isVerified: isVerified,
-                isAdmin: isAdmin,
-                createdAt: new Date(),
+                isVerified,
+                isAdmin,
+                createdAt: serverTimestamp(), // uses Firestore server time
             });
 
-            // 5. Success Notifications and Redirection
+            // 8️⃣ Success UX
             showWelcomeNotification(username);
-            autoJoinWhatsAppGC(); // Crucial: Auto-join WhatsApp GC
-            
-            // Redirect admin to dashboard, others to home/feed
+            autoJoinWhatsAppGC();
             router.push(isAdmin ? '/admin' : '/');
 
         } catch (error) {
             console.error('Registration Error:', error);
-            // Translate common Firebase errors for better UX
             if (error.code === 'auth/email-already-in-use') {
                 toast.error('This email is already registered.');
             } else if (error.code === 'auth/weak-password') {
@@ -105,20 +130,17 @@ const Register = () => {
                 </motion.h1>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* Basic Account Fields */}
                     <InputField Icon={FiUser} name="username" placeholder="Unique Username" value={formData.username} onChange={handleChange} required />
                     <InputField Icon={FiMail} name="email" type="email" placeholder="Email Address" value={formData.email} onChange={handleChange} required />
                     <InputField Icon={FiLock} name="password" type="password" placeholder="Password (min 6 chars)" value={formData.password} onChange={handleChange} required />
 
                     <h2 className="text-xl font-semibold mt-6 pt-4 border-t border-gray-700 text-purple-400">Personal Details</h2>
-                    
-                    {/* Additional Required Fields */}
+
                     <InputField Icon={FiStar} name="age" type="number" placeholder="Age" value={formData.age} onChange={handleChange} required />
                     <InputField Icon={FiMapPin} name="location" placeholder="Location" value={formData.location} onChange={handleChange} required />
                     <InputField Icon={FiHeart} name="interests" placeholder="Interests (e.g., coding, games, music)" value={formData.interests} onChange={handleChange} hint="Comma separated list." />
                     <InputField Icon={FaWhatsapp} name="whatsappNumber" placeholder="WhatsApp Number (+234...)" value={formData.whatsappNumber} onChange={handleChange} type="tel" required />
 
-                    {/* Select Fields */}
                     <SelectField name="sex" label="Sex" value={formData.sex} onChange={handleChange} options={['male', 'female', 'other']} />
                     <SelectField name="relationshipStatus" label="Relationship Status" value={formData.relationshipStatus} onChange={handleChange} options={['single', 'in a relationship', 'married', 'complicated']} />
 
@@ -132,6 +154,7 @@ const Register = () => {
                         {loading ? 'Registering...' : 'Register & Join GC!'}
                     </motion.button>
                 </form>
+
                 <p className="text-center mt-4 text-gray-400">
                     Already a member?{' '}
                     <button onClick={() => router.push('/login')} className="text-purple-400 hover:text-purple-300 font-medium transition duration-200">
@@ -142,8 +165,6 @@ const Register = () => {
         </div>
     );
 };
-
-// --- Reusable Component Snippets (move to components/ or utils/ for production) ---
 
 const InputField = ({ Icon, name, placeholder, value, onChange, required, type = 'text', hint }) => (
     <div className="relative">
