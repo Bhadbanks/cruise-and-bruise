@@ -1,79 +1,114 @@
-import { useState } from "react";
-import { useRouter } from "next/router";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../utils/firebase";
-import Link from "next/link";
+import { useState } from 'react';
+import { useRouter } from 'next/router';
+import Head from 'next/head';
+import Link from 'next/link';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth, checkAdminStatus } from '../utils/firebase';
+import { useAuth } from '../utils/AuthContext';
+import { FiMail, FiLock } from 'react-icons/fi';
+import { FaCrown } from 'react-icons/fa';
+import { motion } from 'framer-motion';
+import toast, { Toaster } from 'react-hot-toast';
 
-export default function Login() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+const Login = () => {
+    const router = useRouter();
+    const { userProfile } = useAuth(); // Use AuthContext to check if user is already logged in
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      router.push("/");
-    } catch (err) {
-      setError("⚠️ Invalid email or password. Try again!");
-    } finally {
-      setLoading(false);
+    // Redirect already logged-in users to the homepage
+    if (userProfile && typeof window !== 'undefined') {
+        router.push(userProfile.isAdmin ? '/admin' : '/');
+        return null;
     }
-  };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-100 via-yellow-50 to-red-100 relative overflow-hidden">
-      {/* Glowing animation */}
-      <div className="absolute inset-0 overflow-hidden z-0">
-        <div className="absolute -top-20 left-0 w-80 h-80 bg-pink-300 rounded-full blur-3xl opacity-40 animate-pulse"></div>
-        <div className="absolute bottom-0 right-0 w-96 h-96 bg-yellow-300 rounded-full blur-3xl opacity-30 animate-ping"></div>
-      </div>
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
 
-      <form
-        onSubmit={handleLogin}
-        className="relative z-10 bg-white/70 backdrop-blur-xl p-8 rounded-2xl shadow-2xl max-w-sm w-full text-center"
-      >
-        <h1 className="text-3xl font-bold text-pink-600 mb-2">Welcome Back 👋</h1>
-        <p className="text-gray-600 mb-6">Log in to your Special Squad account</p>
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            // On successful login, the AuthContext listener will fetch the user profile.
+            // We can determine the redirection based on the profile data it fetches.
+            
+            // For immediate redirection, check if the email belongs to the admin based on stored profile data.
+            // Note: The most reliable check is done inside the AuthContext listener, but this provides a quick UX.
+            
+            toast.success("Login successful! Redirecting...");
+            
+            // The AuthContext will handle the final redirection after it fetches the profile, 
+            // but we can push to the home page for a smooth transition.
+            router.push('/'); 
 
-        {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
-
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full mb-3 p-3 border border-pink-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full mb-4 p-3 border border-pink-300 rounded-lg focus:ring-2 focus:ring-pink-400 outline-none"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 text-white py-3 rounded-lg font-semibold shadow hover:scale-105 transition-transform"
-        >
-          {loading ? "Logging in..." : "Login"}
-        </button>
-
-        <p className="mt-4 text-gray-700">
-          Don’t have an account?{" "}
-          <Link href="/register" className="text-pink-600 font-semibold hover:underline">
-            Register
-          </Link>
-        </p>
-      </form>
-    </div>
-  );
+        } catch (error) {
+            console.error('Login Error:', error);
+            // Translate common Firebase errors
+            if (error.code === 'auth/invalid-email' || error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                toast.error('Invalid email or password.');
+            } else {
+                toast.error(`Login failed: ${error.message}`);
             }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 text-gray-100">
+            <Head><title>Login - Special Squad</title></Head>
+            <Toaster />
+            <div className="w-full max-w-sm p-8 bg-gray-800 rounded-xl shadow-2xl backdrop-blur-sm border border-gray-700">
+                <motion.h1 
+                    initial={{ y: -50, opacity: 0 }} 
+                    animate={{ y: 0, opacity: 1 }}
+                    className="text-3xl font-bold text-center mb-8 text-pink-400 flex items-center justify-center"
+                >
+                    <FaCrown className="w-6 h-6 mr-2" />
+                    Special Squad Login
+                </motion.h1>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <InputField Icon={FiMail} name="email" type="email" placeholder="Email Address" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                    <InputField Icon={FiLock} name="password" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        type="submit"
+                        disabled={loading}
+                        className="w-full py-3 bg-gc-primary text-white font-bold rounded-lg shadow-md hover:bg-pink-700 transition duration-300 disabled:opacity-50"
+                    >
+                        {loading ? 'Logging in...' : 'Login'}
+                    </motion.button>
+                </form>
+                <p className="text-center mt-6 text-gray-400">
+                    New to the Squad?{' '}
+                    <Link href="/register" legacyBehavior>
+                        <a className="text-purple-400 hover:text-purple-300 font-medium transition duration-200">
+                            Register here
+                        </a>
+                    </Link>
+                </p>
+            </div>
+        </div>
+    );
+};
+
+// Reusable InputField component (as used in register.js)
+const InputField = ({ Icon, name, placeholder, value, onChange, required, type = 'text' }) => (
+    <div className="relative">
+        <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+        <input
+            type={type}
+            name={name}
+            placeholder={placeholder}
+            value={value}
+            onChange={onChange}
+            required={required}
+            className="w-full pl-10 pr-4 py-3 bg-gray-700 rounded-lg placeholder-gray-400 text-white focus:ring-2 focus:ring-pink-500 focus:outline-none transition duration-300"
+        />
+    </div>
+);
+
+export default Login;
