@@ -1,6 +1,4 @@
-/* src/styles/globals.css (UPDATED) */
-
-/* --- CRITICAL: THESE THREE IMPORTS MUST BE PRESENT AND CORRECT --- */
+/* src/styles/globals.css (in src/styles folder) */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -11,41 +9,25 @@
   height: 8px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #6C5CE7; /* gc-secondary */
+  background: #2F2F40; /* gc-border */
   border-radius: 4px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: #1B152C; /* gc-card */
+  background: #08080D; /* gc-vibe */
 }
 
-/* Base App Styles */
+/* Base App Styles (FIXED) */
 body {
-  background-color: #0D0A1E; /* gc-vibe */
-  color: #EAEAEA; /* gc-text */
+  background-color: #08080D; /* gc-vibe */
+  color: #E7E9EA; /* gc-text */
   min-height: 100vh;
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  
-  /* NEW: Add a subtle texture/mesh background for a premium feel */
-  background-image: url('/vibe-texture.png'), radial-gradient(circle at 50% 10%, rgba(108, 92, 231, 0.15), transparent 60%);
-  background-attachment: fixed; /* Keeps the texture stable */
-  background-size: cover;
 }
 
-/* Fix for large Next.js image placeholder */
-img {
-  max-width: 100%;
-  height: auto;
-}
-
-/* Define a small animation for the logo/loading screen */
-@keyframes flicker-glow {
-  0%, 100% { box-shadow: 0 0 10px rgba(255, 107, 129, 0.5); }
-  50% { box-shadow: 0 0 20px rgba(255, 107, 129, 0.8), 0 0 30px rgba(108, 92, 231, 0.6); }
-}
-
-.flicker-glow-animation {
-  animation: flicker-glow 2s infinite alternate;
+/* Base input focus styles for all components */
+input:focus, textarea:focus {
+    @apply ring-1 ring-gc-primary border-gc-primary;
 }
