@@ -7,17 +7,23 @@ import { FiHome, FiUsers, FiMessageCircle, FiUser, FiLogOut, FiSettings } from '
 import { FaCrown, FaFeatherAlt } from 'react-icons/fa';
 import { useAuth } from '../utils/AuthContext';
 
+// Simplified Name for Code Consistency
+const GC_NAME = "👑✨ Special Squad ✨👑"; 
+
 const NavItem = ({ href, icon: Icon, label, isAdmin }) => {
     const router = useRouter();
     const isActive = router.pathname === href;
     const activeClass = isActive ? 'text-gc-primary font-bold' : 'text-gc-text hover:text-gc-primary';
     const baseClass = "flex items-center space-x-3 p-3 rounded-full transition duration-200 hover:bg-gc-card/50";
     
+    // Admin links use the special admin color
+    const itemClass = isAdmin ? 'text-gc-admin' : activeClass;
+
     return (
         <Link href={href} legacyBehavior>
             <motion.a 
                 whileHover={{ scale: 1.05 }}
-                className={`${baseClass} ${activeClass} ${isAdmin ? 'text-gc-admin' : ''}`}
+                className={`${baseClass} ${itemClass}`}
             >
                 <Icon className={`w-6 h-6 ${isAdmin ? 'text-gc-admin' : ''}`} />
                 <span className="text-xl hidden xl:inline">{label}</span>
@@ -31,14 +37,14 @@ const Header = () => {
     if (loading) return null;
 
     const navLinks = [
-        { href: '/', icon: FiHome, label: 'Home' },
+        { href: '/feed', icon: FiHome, label: 'Home' }, // Home is now /feed
         { href: '/members', icon: FiUsers, label: 'Members' },
         { href: '/chat', icon: FiMessageCircle, label: 'Messages' },
         { href: `/profile/${userProfile?.username || 'me'}`, icon: FiUser, label: 'Profile' },
     ];
     
     return (
-        <header className="sticky top-0 z-40 bg-gc-vibe/90 backdrop-blur-md border-b border-gc-border shadow-lg">
+        <header className="sticky top-0 z-40 bg-gc-vibe/90 backdrop-blur-md border-b border-gc-border shadow-lg lg:border-none">
             <div className="max-w-6xl mx-auto flex lg:block items-center justify-between p-3">
                 
                 {/* 1. Mobile/Brand Logo (FIXED SIZE & NAME) */}
@@ -51,8 +57,8 @@ const Header = () => {
                         >
                             {/* FIXED LOGO SIZE: w-8 h-8 */}
                             <img src="/logo.png" alt="Squad Logo" className="w-8 h-8 object-contain" />
-                            {/* FIXED NAME */}
-                            <span className="text-gc-primary">👑✨ Special Squad ✨👑</span>
+                            {/* FIXED NAME (using the simplified text name for clarity) */}
+                            <span className="text-gc-primary">{GC_NAME}</span>
                         </motion.a>
                     </Link>
                     {/* Mobile Post Button */}
@@ -71,7 +77,7 @@ const Header = () => {
                 <nav className="hidden lg:block">
                     <div className="flex flex-col space-y-2 p-2">
                         {/* Desktop Brand Logo */}
-                         <Link href="/" legacyBehavior>
+                         <Link href="/feed" legacyBehavior>
                             <motion.a 
                                 className="mb-4 flex items-center space-x-2 text-white font-extrabold text-2xl p-3"
                             >
