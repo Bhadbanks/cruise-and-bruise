@@ -1,115 +1,92 @@
 // src/pages/register.js
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '../utils/AuthContext';
 import { motion } from 'framer-motion';
+import { FiMail, FiLock, FiUser, FiUserPlus } from 'react-icons/fi';
+import { useAuth } from '../utils/AuthContext';
 import toast from 'react-hot-toast';
-import { FiMail, FiLock, FiUser, FiPlusCircle, FiMapPin, FiCalendar } from 'react-icons/fi';
+import GlobalLoading from '../components/GlobalLoading';
 
 const RegisterPage = () => {
+    const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [username, setUsername] = useState('');
-    const [age, setAge] = useState('');
-    const [location, setLocation] = useState('');
-    const [loading, setLoading] = useState(false);
-    const { register, currentUser } = useAuth();
-    
-    if (currentUser) return null;
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const { register, loading } = useAuth();
+
+    if (loading) return <GlobalLoading />;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
-
-        const initialData = { username: username.trim(), age, location };
-
+        setIsSubmitting(true);
         try {
-            await register(email, password, initialData);
-            toast.success("Registration successful! Complete your full profile now.");
-            // AuthContext handles push to /gc-join
-            
+            await register(email, password, { username });
+            toast.success("Registration successful! Now, complete your mandatory GC profile.");
+            // AuthContext handles redirect to /gc-join
         } catch (error) {
-            let message = error.message.includes("Username already taken") ? "Username already taken." : "Registration failed. Try again.";
-            if (error.code === 'auth/email-already-in-use') message = "This email is already registered.";
-            else if (error.code === 'auth/weak-password') message = "Password should be at least 6 characters.";
-            toast.error(message);
-            setLoading(false);
+            console.error(error);
+            toast.error(error.message || "Registration failed. Try a different username/email.");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
-    const inputClass = "w-full pl-10 pr-4 py-3 bg-gc-vibe border border-gc-border rounded-lg text-white placeholder-gray-500 transition";
+    const inputClass = "w-full p-3 bg-gc-vibe border border-gc-border rounded-lg text-white placeholder-gray-500 focus:ring-1 focus:ring-gc-primary transition";
 
     return (
-        <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="min-h-screen flex items-center justify-center p-4 bg-gc-vibe bg-gc-gradient"
-        >
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gc-vibe">
             <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
                 transition={{ type: "spring", stiffness: 100 }}
-                className="max-w-sm w-full bg-gc-card p-8 rounded-xl shadow-2xl border-2 border-gc-secondary/80"
+                className="w-full max-w-md bg-gc-card p-8 rounded-xl shadow-2xl border-2 border-gc-secondary/80"
             >
-                <img src="/logo.png" alt="Logo" className="w-16 h-16 mx-auto mb-6" />
-                <h1 className="text-3xl font-bold text-white mb-2 text-center">
-                    Create Your Squad Profile
+                <h1 className="text-3xl font-extrabold text-gc-secondary mb-6 text-center">
+                    Join the Special Squad
                 </h1>
-                <p className="text-gray-400 mb-6 text-center">
-                    Just the essentials to get started.
-                </p>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="relative">
-                        <FiUser className="absolute left-3 top-3.5 text-gray-400" />
-                        <input type="text" value={username} onChange={(e) => setUsername(e.target.value.replace(/\s/g, ''))} 
-                            placeholder="Username (e.g., @SquadBhad)" required className={inputClass} />
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    <div>
+                        <label className="block text-gray-300 mb-1 flex items-center space-x-1"><FiUser /> <span>Username</span></label>
+                        <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className={inputClass} placeholder="squad_master_123" required />
                     </div>
-                    <div className="relative">
-                        <FiMail className="absolute left-3 top-3.5 text-gray-400" />
-                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} 
-                            placeholder="Email" required className={inputClass} />
+                    <div>
+                        <label className="block text-gray-300 mb-1 flex items-center space-x-1"><FiMail /> <span>Email</span></label>
+                        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} placeholder="vibe@squad.com" required />
                     </div>
-                    <div className="relative">
-                        <FiLock className="absolute left-3 top-3.5 text-gray-400" />
-                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} 
-                            placeholder="Password (Min 6 characters)" required className={inputClass} />
+                    <div>
+                        <label className="block text-gray-300 mb-1 flex items-center space-x-1"><FiLock /> <span>Password (min 6 characters)</span></label>
+                        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} placeholder="••••••••" required />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="relative">
-                            <FiCalendar className="absolute left-3 top-3.5 text-gray-400" />
-                            <input type="number" value={age} onChange={(e) => setAge(e.target.value)} placeholder="Age" className={inputClass.replace("pl-10", "pl-4")} />
-                        </div>
-                        <div className="relative">
-                            <FiMapPin className="absolute left-3 top-3.5 text-gray-400" />
-                            <input type="text" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location" className={inputClass.replace("pl-10", "pl-4")} />
-                        </div>
-                    </div>
-                    
 
                     <motion.button
                         type="submit"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        disabled={loading || !username.trim()}
-                        className="w-full py-3 mt-6 bg-gc-secondary text-white font-bold rounded-lg shadow-gc-glow hover:bg-gc-secondary/90 transition duration-300 disabled:opacity-50 flex items-center justify-center space-x-2"
+                        disabled={isSubmitting}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className="w-full flex items-center justify-center space-x-2 px-8 py-3 bg-gc-secondary text-white font-bold rounded-full disabled:opacity-50 transition duration-300 shadow-lg shadow-gc-secondary/30"
                     >
-                        <FiPlusCircle />
-                        <span>{loading ? 'Signing Up...' : 'Create Account'}</span>
+                        <FiUserPlus />
+                        <span>{isSubmitting ? 'Registering...' : 'Sign Up'}</span>
                     </motion.button>
                 </form>
 
                 <p className="text-center text-gray-500 mt-6 text-sm">
-                    Already a member?{' '}
-                    <Link href="/login" legacyBehavior>
-                        <a className="text-gc-primary font-semibold hover:underline">
-                            Log In
-                        </a>
+                    Already part of the Vibe?{' '}
+                    <Link href="/login" className="text-gc-primary hover:underline font-semibold">
+                        Log In
+                    </Link>
+                </p>
+                <p className="text-center text-gray-500 mt-2 text-xs">
+                    <Link href="/splash" className="text-gc-secondary hover:underline">
+                        Back to Splash Page
                     </Link>
                 </p>
             </motion.div>
-        </motion.div>
+        </div>
     );
 };
+
+RegisterPage.displayName = 'register'; 
 
 export default RegisterPage;
