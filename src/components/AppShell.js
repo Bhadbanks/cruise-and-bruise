@@ -1,100 +1,90 @@
 // src/components/AppShell.js
+import React from 'react';
+import { useRouter } from 'next/router';
 import { useAuth } from '../utils/AuthContext';
+import GlobalLoading from './GlobalLoading';
 import Header from './Header';
 import Footer from './Footer';
-import { motion } from 'framer-motion';
-import { useRouter } from 'next/router';
-import GlobalLoading from './GlobalLoading'; // Import the loading spinner
-import dynamic from 'next/dynamic';
+import RightColumn from './RightColumn';
 
-// Define pages that do NOT need the full social app shell (Header/Footer/Sidebar)
-const NO_LAYOUT_PATHS = ['/login', '/register'];
+const protectedRoutes = ['/', '/members', '/chat', '/admin', '/settings'];
+const authRoutes = ['/login', '/register', '/gc-join'];
 
-// Component for the fixed Right Column (Dynamically imported for optimization)
-const RightColumn = dynamic(() => import('./RightColumn'), { ssr: false });
-
-const AppShell = ({ Component, pageProps }) => {
-    const { currentUser, userProfile, isAdmin } = useAuth();
+const AppShell = ({ children }) => {
+    const { currentUser, userProfile, loading, isAdmin } = useAuth();
     const router = useRouter();
-    const needsFullLayout = !NO_LAYOUT_PATHS.includes(router.pathname);
-
-    // This component runs on the client. We assume useAuth handles the initial loading state correctly.
+    const isProtected = protectedRoutes.some(route => router.pathname.startsWith(route) && route !== '/');
+    const isAuthRoute = authRoutes.includes(router.pathname);
+    const isHomePage = router.pathname === '/';
     
-    // Quick initial check (if userProfile is null but currentUser is true, we are still loading profile)
-    if (currentUser && !userProfile) {
+    // --- 1. Initial Loading State ---
+    if (loading) {
         return <GlobalLoading />;
     }
 
-    // 1. Redirect unauthenticated users
-    if (!currentUser) {
-        if (router.pathname !== '/login' && router.pathname !== '/register') {
-             router.replace('/login');
-             return null;
+    // --- 2. Auth Protection Logic ---
+    if (isProtected && !currentUser) {
+        // Allow unauthenticated users to see a PUBLIC version of the feed/homepage
+        if (isHomePage) {
+            // No redirect, allow rendering with limited features
+        } else {
+            router.push('/login');
+            return <GlobalLoading />; 
         }
     }
     
-    // 2. Redirect Admin to admin dashboard (if not already there)
-    if (isAdmin && router.pathname !== '/admin') {
-         router.replace('/admin');
-         return null;
+    // --- 3. Profile Setup Enforcement ---
+    if (currentUser && !userProfile && router.pathname !== '/gc-join') {
+        router.push('/gc-join');
+        return <GlobalLoading />;
     }
     
-    // 3. Redirect if GC not joined (The most robust check)
-    if (currentUser && userProfile && !userProfile.hasJoinedGC && router.pathname !== '/gc-join') {
-        router.replace('/gc-join');
-        return null;
+    // --- 4. Post-Login Redirection (FIXED) ---
+    if (currentUser && userProfile && isAuthRoute && router.pathname !== '/gc-join') {
+        router.push('/');
+        return <GlobalLoading />;
     }
 
+    // --- 5. Admin Protection ---
+    if (router.pathname === '/admin' && !isAdmin) {
+        router.push('/');
+        return <GlobalLoading />; 
+    }
 
-    // Auth pages and GC Join page render without the shell
-    if (!needsFullLayout || router.pathname === '/gc-join') {
-        return (
-            <motion.div
-                key={router.pathname}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3 }}
-                className="min-h-screen bg-gc-vibe"
-            >
-                <Component {...pageProps} />
-            </motion.div>
-        );
+    // --- Render Logic ---
+    const isFullPage = isAuthRoute || router.pathname === '/404';
+
+    if (isFullPage) {
+        return <>{children}</>;
     }
     
-    // All other pages get the full social app layout
     return (
-        <div className="min-h-screen relative bg-gc-vibe text-white">
+        <div className="min-h-screen bg-gc-vibe">
             <Header />
-
-            {/* Main Content Wrapper: Provides padding for fixed header on top, and layout for sidebars */}
-            <div className="pt-16 lg:pt-0 min-h-screen"> 
-                 <div className="flex justify-center max-w-7xl mx-auto">
+            <main className="max-w-6xl mx-auto px-4 pt-16">
+                <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr_300px] gap-6">
+                    {/* Left Column (Navigation - Hidden on mobile) */}
+                    <div className="hidden lg:block">
+                        <div className="sticky top-20">
+                            {/* Navigation Links go here (e.g., in Header component) */}
+                            <p className="text-gray-500">Navigation...</p>
+                        </div>
+                    </div>
                     
-                    {/* Left Sidebar Spacer (Fixed Left column content is handled inside Header.js) */}
-                    <div className="hidden lg:block lg:w-60"></div> 
-                    
-                    {/* Center Content Column (The main feed) */}
-                    <main className="w-full lg:w-[600px] xl:w-[700px] relative z-10 min-h-[90vh] px-4 pt-4 lg:px-0">
-                        <motion.div
-                            key={router.pathname}
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.4 }}
-                        >
-                            <Component {...pageProps} />
-                        </motion.div>
-                    </main>
+                    {/* Center Column (Main Content) */}
+                    <div className="col-span-1 min-h-[80vh] border-x border-gc-border">
+                        {children}
+                    </div>
 
-                    {/* Right Column (Widgets) */}
-                    <div className="hidden xl:block xl:w-[350px] p-4 sticky top-0 h-screen overflow-y-auto pt-16">
+                    {/* Right Column (Widgets - Hidden on small screens) */}
+                    <div className="hidden lg:block">
                         <RightColumn />
                     </div>
                 </div>
-            </div>
-            
+            </main>
             <Footer />
         </div>
     );
-}
+};
 
 export default AppShell;
