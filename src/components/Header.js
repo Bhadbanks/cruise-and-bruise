@@ -44,15 +44,20 @@ const Header = () => {
             <div className="max-w-6xl mx-auto flex items-center justify-between p-3">
                 {/* Logo & Brand */}
                 <Link href="/" legacyBehavior>
-                    <motion.a 
-                        initial={{ scale: 0.9 }}
-                        animate={{ scale: 1 }}
-                        className="flex items-center space-x-2 text-white font-extrabold text-2xl"
-                    >
-                        <img src="/logo.png" alt="Squad Logo" className="w-8 h-8" />
-                        <span className="hidden sm:block text-gc-primary">SquadVibe</span>
-                    </motion.a>
-                </Link>
+    <motion.a 
+        initial={{ scale: 0.9 }}
+        animate={{ scale: 1 }}
+        className="flex items-center space-x-2 text-white font-extrabold text-2xl"
+    >
+        <img 
+            src="/logo.png" 
+            alt="Squad Logo" 
+            // ⚠️ CRITICAL FIX: Ensure the logo size is strictly defined
+            className="w-8 h-8 object-contain" // Use object-contain to prevent stretching
+        /> 
+        <span className="hidden sm:block text-gc-primary">SquadVibe</span>
+    </motion.a>
+</Link>
 
                 {/* Desktop Navigation (Center) - Only visible when logged in */}
                 {currentUser && (
