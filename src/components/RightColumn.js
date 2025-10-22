@@ -1,60 +1,72 @@
 // src/components/RightColumn.js
+import React from 'react';
 import { motion } from 'framer-motion';
+import { FiTrendingUp, FiStar, FiUserCheck, FiZap } from 'react-icons/fi';
 import { useAuth } from '../utils/AuthContext';
-import { FaWhatsapp, FaCrown } from 'react-icons/fa';
+
+const WidgetCard = ({ title, icon: Icon, children, color }) => (
+    <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3 }}
+        className="bg-gc-card p-4 rounded-xl shadow-lg border border-gc-border mb-4"
+    >
+        <h3 className={`text-lg font-bold mb-3 flex items-center space-x-2 ${color}`}>
+            <Icon className="w-5 h-5" />
+            <span>{title}</span>
+        </h3>
+        {children}
+    </motion.div>
+);
 
 const RightColumn = () => {
-    const { GC_LINK, DEVELOPER_WHATSAPP } = useAuth();
+    const { currentUser } = useAuth();
     
-    const trendItems = [
-        { title: '#TheUltimatum', count: '1.2k Posts' },
-        { title: '#GcVibeCheck', count: '980 Posts' },
-        { title: '#SpecialSquad', count: 'Trending' },
-        { title: '#Lowkey', count: 'Admin Chat' },
-    ];
-
     return (
-        <div className="space-y-4">
-            {/* Action Card: Join GC */}
-            <motion.div 
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
-                className="p-4 rounded-xl shadow-xl border border-gc-primary/50 bg-gc-card/80 backdrop-blur-sm"
-            >
-                <h2 className="text-xl font-bold text-gc-primary mb-3 flex items-center space-x-2"><FaCrown /><span>Squad HQ</span></h2>
-                <p className="text-gray-400 mb-4 text-sm">Join the official WhatsApp group for real-time engagement and announcements.</p>
-                <motion.a
-                    href={GC_LINK}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    whileHover={{ scale: 1.05, boxShadow: '0 0 10px rgba(74, 20, 140, 0.8)' }}
-                    whileTap={{ scale: 0.95 }}
-                    className="block w-full text-center py-2 bg-gc-secondary text-white font-semibold rounded-full transition duration-300"
-                >
-                    <span className='flex items-center justify-center space-x-2'><FaWhatsapp /> Join Group Chat</span>
-                </motion.a>
-            </motion.div>
+        <div className="sticky top-20">
+            {/* 1. Trending Topics Widget (Advanced/Premium Feature) */}
+            <WidgetCard title="Trending Vibe" icon={FiTrendingUp} color="text-gc-primary">
+                <ul className="space-y-2 text-sm text-gray-300">
+                    <li className="hover:text-gc-primary cursor-pointer transition">#SquadMeetup (12.5K Posts)</li>
+                    <li className="hover:text-gc-primary cursor-pointer transition">#PremiumChat (8.1K Posts)</li>
+                    <li className="hover:text-gc-primary cursor-pointer transition">#FridayNightVibes (5.2K Posts)</li>
+                </ul>
+            </WidgetCard>
 
-            {/* Trending Section */}
-            <motion.div 
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="p-4 rounded-xl shadow-xl border border-gc-border bg-gc-card/80 backdrop-blur-sm"
-            >
-                <h2 className="text-xl font-bold text-white mb-3">What's Happening</h2>
-                {trendItems.map((item, index) => (
-                    <motion.div 
-                        key={index} 
-                        whileHover={{ backgroundColor: '#2b2233', x: 5 }}
-                        className="py-2 px-1 cursor-pointer rounded-lg transition duration-200"
-                    >
-                        <p className="text-sm font-semibold text-white">{item.title}</p>
-                        <p className="text-xs text-gray-500">{item.count}</p>
-                    </motion.div>
-                ))}
-            </motion.div>
+            {/* 2. Premium Status Widget */}
+            <WidgetCard title="Vibe Status" icon={FiZap} color="text-gc-secondary">
+                <div className="text-sm">
+                    {currentUser ? (
+                        <>
+                            <p className="text-white font-semibold">Current Level: ✨ Standard</p>
+                            <p className="text-gray-400 mt-2">Unlock unlimited photo uploads and read receipts with **Squad Premium**!</p>
+                            <motion.button 
+                                whileHover={{ scale: 1.03 }}
+                                className="mt-3 w-full py-2 bg-gc-primary text-white font-bold rounded-lg shadow-gc-glow-primary"
+                            >
+                                Go Premium
+                            </motion.button>
+                        </>
+                    ) : (
+                        <p className="text-gray-400">Log in to view your Vibe Status and Premium features.</p>
+                    )}
+                </div>
+            </WidgetCard>
+            
+            {/* 3. Who to Follow Widget */}
+            <WidgetCard title="Suggested Squad" icon={FiUserCheck} color="text-gc-verified">
+                <ul className="space-y-3 text-sm">
+                    {/* Dummy suggested users */}
+                    <li className="flex items-center justify-between text-white">
+                        <span className="hover:text-gc-verified cursor-pointer">@DeveloperVibe</span>
+                        <span className="text-xs text-gray-500">10k Followers</span>
+                    </li>
+                    <li className="flex items-center justify-between text-white">
+                        <span className="hover:text-gc-verified cursor-pointer">@ChatMaster</span>
+                        <span className="text-xs text-gray-500">5k Followers</span>
+                    </li>
+                </ul>
+            </WidgetCard>
         </div>
     );
 };
