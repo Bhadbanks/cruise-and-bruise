@@ -1,25 +1,23 @@
 // src/components/PostCard.js
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { FaRegComment, FaHeart, FaShare, FaCrown, FaCheckCircle, FaTrash } from 'react-icons/fa';
-import { FiLink } from 'react-icons/fi';
 import { useAuth } from '../utils/AuthContext';
 import { db } from '../utils/firebase';
 import { doc, deleteDoc } from 'firebase/firestore';
-import { timeAgo } from '../utils/helpers'; // Helper for time formatting
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { timeAgo } from '../utils/helpers';
 
 const PostCard = ({ post }) => {
     const { userProfile, isAdmin } = useAuth();
-    const [isLiking, setIsLiking] = useState(false);
     
-    // Check if the current user is the author
     const isAuthor = userProfile && userProfile.uid === post.uid;
+    const isAnnouncement = post.isAnnouncement;
 
     const handleDelete = async () => {
         if (!isAdmin && !isAuthor) {
-            toast.error("You don't have permission to delete this post.");
+            toast.error("Permission denied.");
             return;
         }
 
@@ -35,14 +33,19 @@ const PostCard = ({ post }) => {
         }
     };
     
-    // Liking/Interaction logic would be more complex (using transactions) but is skipped for brevity.
+    const cardVariants = {
+        hidden: { opacity: 0, y: 20 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+        hover: { backgroundColor: '#15151F', transition: { duration: 0.1 } } // gc-card
+    };
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="p-4 bg-gc-vibe hover:bg-gc-card/50 transition duration-300 cursor-pointer"
+            variants={cardVariants}
+            initial="hidden"
+            animate="visible"
+            whileHover="hover"
+            className={`p-4 bg-gc-vibe transition duration-300 cursor-pointer ${isAnnouncement ? 'border-2 border-red-500/50 shadow-lg' : ''}`}
         >
             <div className="flex space-x-3">
                 {/* Profile Pic */}
@@ -57,10 +60,13 @@ const PostCard = ({ post }) => {
                 <div className="flex-1">
                     {/* Header */}
                     <div className="flex items-center space-x-1 mb-1">
+                        {isAnnouncement && <span className='text-red-500 font-bold text-xs mr-2 border border-red-500 px-1 rounded-sm'>ANNOUNCEMENT</span>}
                         <Link href={`/profile/${post.username}`} legacyBehavior>
                              <span className="font-bold text-white hover:underline cursor-pointer">{post.username}</span>
                         </Link>
-                        {post.isAdmin && <FaCrown className="w-3 h-3 text-gc-admin" title="Admin" />}
+                        {/* Admin Golden Verified Check */}
+                        {post.isAdmin && <FaCrown className="w-4 h-4 text-gc-admin" title="Admin (Lowkey Is Him)" />}
+                        {/* Standard Blue Verification Check */}
                         {post.isVerified && !post.isAdmin && <FaCheckCircle className="w-3 h-3 text-gc-verified" title="Verified" />}
                         <span className="text-gray-500 text-sm">· {timeAgo(post.timestamp)}</span>
                     </div>
@@ -68,9 +74,8 @@ const PostCard = ({ post }) => {
                     {/* Content */}
                     <p className="text-gc-text whitespace-pre-wrap mb-3">{post.content}</p>
 
-                    {/* Action Bar (Simplified Twitter/X style) */}
+                    {/* Action Bar */}
                     <div className="flex justify-between text-gray-500 mt-2">
-                        
                         <motion.button whileHover={{ scale: 1.1 }} className="flex items-center space-x-2 hover:text-gc-primary">
                             <FaRegComment className="w-4 h-4" />
                             <span className="text-xs">{post.comments || 0}</span>
@@ -78,8 +83,7 @@ const PostCard = ({ post }) => {
 
                         <motion.button 
                             whileHover={{ scale: 1.1 }} 
-                            className={`flex items-center space-x-2 transition ${isLiking ? 'text-gc-secondary' : 'hover:text-gc-secondary'}`}
-                            onClick={() => setIsLiking(!isLiking)} // Placeholder action
+                            className={`flex items-center space-x-2 transition hover:text-gc-secondary`}
                         >
                             <FaHeart className="w-4 h-4" />
                             <span className="text-xs">{post.likes || 0}</span>
