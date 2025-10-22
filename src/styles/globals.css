@@ -27,9 +27,11 @@ body {
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* NEW: Starry Background Gradient */
-  background-image: radial-gradient(circle at 50% 10%, rgba(108, 92, 231, 0.15), transparent 60%), url('/stars.png');
-  background-attachment: fixed; /* Keeps the stars fixed when scrolling */
+
+  /* PREMIUM AESTHETIC UPGRADE: Subtle texture/pattern */
+  background-image: 
+    radial-gradient(circle at 50% 10%, rgba(108, 92, 231, 0.15), transparent 60%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.01) 0px, rgba(255, 255, 255, 0.01) 2px, transparent 2px, transparent 10px);
 }
 
 /* Fix for large Next.js image placeholder */
