@@ -24,10 +24,10 @@ const ChatBubble = ({ message, isSender, timestamp }) => {
             <div className={`max-w-[75%] p-3 rounded-2xl shadow-md ${
                 isSender 
                     ? 'bg-gc-primary text-white rounded-br-none' 
-                    : 'bg-gc-secondary/50 text-white rounded-tl-none'
+                    : 'bg-gc-card/50 text-white rounded-tl-none'
             }`}>
                 <p className="text-sm break-words">{message.content}</p>
-                <span className={`block text-xs mt-1 ${isSender ? 'text-pink-200' : 'text-gray-300'} text-right`}>
+                <span className={`block text-xs mt-1 ${isSender ? 'text-pink-200' : 'text-gray-400'} text-right`}>
                     {time}
                 </span>
             </div>
@@ -42,7 +42,6 @@ const ChatWindow = ({ targetUser, onCloseChat }) => {
     const [loading, setLoading] = useState(true);
     const messagesEndRef = useRef(null);
 
-    // Ensure currentUser and targetUser UIDs exist before creating chat ID
     const chatId = currentUser && targetUser ? getChatId(currentUser.uid, targetUser.uid) : null;
 
     useEffect(() => {
@@ -99,7 +98,7 @@ const ChatWindow = ({ targetUser, onCloseChat }) => {
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.3 }}
-            className="flex flex-col h-full bg-gc-vibe rounded-xl shadow-2xl border-2 border-gc-secondary"
+            className="flex flex-col h-full bg-gc-card rounded-xl shadow-2xl border-2 border-gc-secondary/50"
         >
             <div className="flex items-center justify-between p-3 border-b border-gc-border bg-gc-card rounded-t-xl">
                 <div className='flex items-center space-x-2'>
@@ -115,7 +114,7 @@ const ChatWindow = ({ targetUser, onCloseChat }) => {
                 <motion.button 
                     onClick={onCloseChat} 
                     whileHover={{ scale: 1.1 }}
-                    className="p-1 text-gray-400 hover:text-gc-primary transition"
+                    className="p-1 text-gray-400 hover:text-gc-primary transition hidden lg:block" // Hidden on small screens if we use the back button
                 >
                     <FiX className="w-5 h-5" />
                 </motion.button>
@@ -144,7 +143,7 @@ const ChatWindow = ({ targetUser, onCloseChat }) => {
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Type your message..."
+                    placeholder="Type your vibe..."
                     className="flex-1 p-3 bg-gc-vibe border border-gc-border rounded-full text-white placeholder-gray-500 focus:ring-1 focus:ring-gc-primary transition"
                 />
                 <motion.button
