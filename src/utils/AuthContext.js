@@ -1,5 +1,5 @@
-// src/utils/AuthContext.js (in src/utils folder)
-import React, { createContext, useContext, useEffect, useState } from 'react';
+// src/utils/AuthContext.js
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { auth, db } from './firebase';
 import { 
@@ -8,13 +8,14 @@ import {
     signInWithEmailAndPassword, 
     signOut 
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
 // ⚠️ REQUIRED: Replace this with the actual UID of your *first* admin registration
-const ADMIN_UID = "PLACEHOLDER_ADMIN_UID_REQUIRED"; 
+// Find this UID in your Firebase console after registering as the Admin.
+const ADMIN_UID = "YOUR_ADMIN_UID_HERE"; 
 
 export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
@@ -24,45 +25,97 @@ export function AuthProvider({ children }) {
 
     const isAdmin = userProfile?.uid === ADMIN_UID;
     
-    // --- 1. Real-time Auth State Listener (FIXED ROBUSTNESS) ---
+    // --- Online Status (Presence System) ---
+    const isInitialLoad = useRef(true);
+
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (!currentUser) return;
+        
+        const userRef = doc(db, 'users', currentUser.uid);
+        const updatePresence = (status) => {
+            updateDoc(userRef, { 
+                isOnline: status, 
+                lastActive: serverTimestamp() 
+            }).catch(e => console.error("Presence update failed:", e));
+        };
+
+        // Set online status on mount
+        updatePresence(true); 
+
+        // Set offline status on window close/tab switch (imperfect but functional)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'hidden') {
+                updatePresence(false);
+            } else {
+                updatePresence(true);
+            }
+        };
+
+        window.addEventListener('beforeunload', () => updatePresence(false));
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            updatePresence(false); // Set offline on unmount/component cleanup
+            window.removeEventListener('beforeunload', () => updatePresence(false));
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [currentUser]);
+
+    // --- Real-time Auth State & Profile Listener (FIXED ROBUSTNESS) ---
+    useEffect(() => {
+        const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
-            
-            if (user) {
-                // Fetch User Profile
-                const profileRef = doc(db, 'users', user.uid);
-                const profileSnap = await getDoc(profileRef);
-                
-                if (profileSnap.exists()) {
-                    const profileData = { ...profileSnap.data(), uid: user.uid };
+            if (!user) {
+                setUserProfile(null);
+                setLoading(false);
+                return;
+            }
+
+            // Listen to profile changes in real-time
+            const profileRef = doc(db, 'users', user.uid);
+            const unsubscribeProfile = onSnapshot(profileRef, (snap) => {
+                if (snap.exists()) {
+                    const profileData = { ...snap.data(), uid: user.uid };
                     setUserProfile(profileData);
                     
-                    // REDIRECTION FIX: Authenticated user on Auth page -> Home
-                    if (router.pathname === '/login' || router.pathname === '/register') {
-                        router.push('/');
+                    // --- CRITICAL FEATURE: Mandatory Profile/GC Setup Check ---
+                    const isProfileComplete = !!profileData.bio;
+                    const isAuthPage = ['/login', '/register', '/splash'].includes(router.pathname);
+                    
+                    if (isProfileComplete) {
+                        if (isAuthPage) {
+                            router.replace('/feed');
+                        }
+                    } else if (router.pathname !== '/gc-join' && !isAuthPage) {
+                        router.replace('/gc-join'); 
                     }
                 } else {
-                    // REDIRECTION FIX: User exists but profile doesn't -> Profile Setup
                     setUserProfile(null);
                     if (router.pathname !== '/gc-join') {
-                        router.push('/gc-join');
+                        router.replace('/gc-join');
                     }
                 }
-            } else {
-                setUserProfile(null);
-                // Allow public access to / and auth pages
-            }
-            // CRITICAL FIX: Ensure loading is set to false after the check completes
-            setLoading(false);
+
+                if (isInitialLoad.current) {
+                    setLoading(false);
+                    isInitialLoad.current = false;
+                }
+            }, (error) => {
+                console.error("Error fetching real-time profile:", error);
+                setLoading(false);
+            });
+            
+            return () => unsubscribeProfile();
         });
 
-        return unsubscribe;
+        // Cleanup for auth listener
+        return () => unsubscribeAuth();
     }, [router.pathname]);
 
-    // --- 2. Auth Functions (Integrated Custom Fields) ---
+    // --- Auth Functions ---
     const register = async (email, password, initialData) => {
-        const existingUsernameSnap = await getDoc(doc(db, 'usernames', initialData.username.toLowerCase()));
+        const usernameLower = initialData.username.toLowerCase();
+        const existingUsernameSnap = await getDoc(doc(db, 'usernames', usernameLower));
         if (existingUsernameSnap.exists()) {
             throw new Error("Username already taken. Please choose another.");
         }
@@ -70,34 +123,34 @@ export function AuthProvider({ children }) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         
-        // Initial user profile (will be completed on /gc-join)
-        await setDoc(doc(db, 'users', user.uid), {
+        const initialProfile = {
             uid: user.uid,
             email: user.email,
-            // Custom fields from register form
             username: initialData.username,
-            age: initialData.age || '',
-            location: initialData.location || '',
-            
-            // Default/Empty custom fields for later setup
-            bio: '',
+            // Empty fields that will be filled in /gc-join (used for profile check)
+            bio: '', 
+            age: '',
+            location: '',
             sex: '',
             relationshipStatus: '',
             interests: '',
             whatsappNumber: '',
             whatsappConvoLink: '',
             
-            // Admin/Verification logic
+            // Admin/Verification/Presence logic
             isVerified: user.uid === ADMIN_UID,
             isAdmin: user.uid === ADMIN_UID,
+            isOnline: true, // Set true on registration
+            lastActive: serverTimestamp(),
             createdAt: new Date(),
             followersCount: 0,
             followingCount: 0,
             profilePicUrl: null,
             coverImageUrl: null,
-        });
-        
-        await setDoc(doc(db, 'usernames', initialData.username.toLowerCase()), { uid: user.uid });
+        };
+
+        await setDoc(doc(db, 'users', user.uid), initialProfile);
+        await setDoc(doc(db, 'usernames', usernameLower), { uid: user.uid });
     };
 
     const login = (email, password) => {
@@ -105,12 +158,13 @@ export function AuthProvider({ children }) {
     };
 
     const logout = async () => {
+        await updateDoc(doc(db, 'users', currentUser.uid), { isOnline: false, lastActive: serverTimestamp() });
         await signOut(auth);
-        toast.success("Logged out successfully!");
-        router.push('/login');
+        toast.success("Logged out successfully! See you soon.");
+        router.push('/splash');
     };
     
-    // --- 3. Admin Function: Toggle Verification ---
+    // --- Admin Function: Toggle Verification ---
     const toggleVerification = async (targetUid, status) => {
         if (!isAdmin) throw new Error("Permission denied.");
         
@@ -127,8 +181,7 @@ export function AuthProvider({ children }) {
         register,
         login,
         logout,
-        updateProfileData: async (data) => { /* Update logic for Firestore */ }, 
-        toggleVerification
+        toggleVerification,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
