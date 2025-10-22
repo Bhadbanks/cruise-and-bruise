@@ -1,20 +1,23 @@
 // src/components/GlobalLoading.js
 import React from 'react';
-import { FaCrown } from 'react-icons/fa';
 import { motion } from 'framer-motion';
+import { FaCrown } from 'react-icons/fa';
 
-const GlobalLoading = () => (
-    // FIX: Use min-h-screen but ensure flex centering is correct
-    <div className="min-h-screen w-full flex items-center justify-center fixed inset-0 z-50 bg-gc-vibe">
-        <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="text-gc-primary"
-        >
-            <FaCrown className="w-12 h-12" />
-        </motion.div>
-        <p className="ml-4 text-xl font-semibold text-gc-text">Loading the Squad Vibe...</p>
-    </div>
-);
+const GlobalLoading = () => {
+    return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gc-vibe text-white p-4">
+            <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+            >
+                <FaCrown className="w-16 h-16 text-gc-admin" />
+            </motion.div>
+            <h1 className="text-2xl font-bold mt-4 text-gc-primary">
+                Loading The Special Squad Vibe...
+            </h1>
+            <p className='text-sm text-gray-500 mt-1'>Initializing Vibe Protocols...</p>
+        </div>
+    );
+};
 
 export default GlobalLoading;
