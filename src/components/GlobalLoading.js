@@ -4,8 +4,8 @@ import { FaCrown } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
 const GlobalLoading = () => (
-    // Change to 'fixed' to overlay instead of taking up layout space
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gc-vibe/95 backdrop-blur-sm">
+    // FIX: Use min-h-screen but ensure flex centering is correct
+    <div className="min-h-screen w-full flex items-center justify-center fixed inset-0 z-50 bg-gc-vibe">
         <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
