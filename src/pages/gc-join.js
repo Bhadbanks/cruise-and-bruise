@@ -10,11 +10,10 @@ import { db } from '../utils/firebase';
 import GlobalLoading from '../components/GlobalLoading';
 
 const GcJoinPage = () => {
-    const { userProfile, currentUser, loading, login } = useAuth();
+    const { userProfile, currentUser, loading } = useAuth();
     const router = useRouter();
     const [isSaving, setIsSaving] = useState(false);
 
-    // Initial state based on AuthContext data (must be defined in AuthContext register)
     const [formData, setFormData] = useState({
         bio: userProfile?.bio || '',
         location: userProfile?.location || '',
@@ -24,17 +23,13 @@ const GcJoinPage = () => {
         interests: userProfile?.interests || '',
         whatsappNumber: userProfile?.whatsappNumber || '',
         whatsappConvoLink: userProfile?.whatsappConvoLink || '',
-        // NOTE: Profile pic upload is handled separately by the user in settings
     });
     
-    // Protection: If not logged in or profile is complete, redirect
-    React.useEffect(() => {
-        if (!loading && !currentUser) {
-            router.push('/login');
-        } else if (!loading && userProfile && userProfile.bio) {
-            router.push('/');
-        }
-    }, [userProfile, currentUser, router, loading]);
+    // AuthContext handles initial redirects, but ensure the page does not render if complete
+    if (!loading && userProfile && userProfile.bio) {
+        router.push('/feed');
+        return <GlobalLoading />;
+    }
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -45,7 +40,6 @@ const GcJoinPage = () => {
         e.preventDefault();
         setIsSaving(true);
         
-        // Simple validation
         if (!formData.bio || !formData.location || !formData.age) {
             toast.error("Please fill in Bio, Location, and Age.");
             setIsSaving(false);
@@ -57,7 +51,7 @@ const GcJoinPage = () => {
             await updateDoc(userRef, formData);
             
             toast.success("Profile setup complete! Welcome to the Squad.");
-            router.push('/'); 
+            router.push('/feed'); 
         } catch (error) {
             console.error("Error completing profile:", error);
             toast.error("Failed to complete profile setup.");
@@ -66,8 +60,7 @@ const GcJoinPage = () => {
         }
     };
 
-    // Show loading if still checking auth or if user is logged out (redirect handled above)
-    if (loading || !currentUser || (userProfile && userProfile.bio)) {
+    if (loading || !currentUser) {
         return <GlobalLoading />;
     }
 
@@ -166,5 +159,7 @@ const GcJoinPage = () => {
         </div>
     );
 };
+
+GcJoinPage.displayName = 'gc-join';
 
 export default GcJoinPage;
