@@ -1,108 +1,89 @@
 // src/components/CreatePost.js
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FiFeather, FiSend, FiImage, FiPlus } from 'react-icons/fi';
+import { FaFeatherAlt } from 'react-icons/fa';
 import { useAuth } from '../utils/AuthContext';
 import { db } from '../utils/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
-const CreatePost = () => {
-    const { userProfile, currentUser, isAdmin } = useAuth();
-    const [newPostContent, setNewPostContent] = useState('');
-    const [isPosting, setIsPosting] = useState(false);
-    
-    // NOTE: Image upload logic would be added here (requires Firebase Storage)
+const MAX_CHARS = 280;
 
-    const handlePostSubmit = async (e) => {
+const CreatePost = () => {
+    const { userProfile, currentUser } = useAuth();
+    const [content, setContent] = useState('');
+    const [isPosting, setIsPosting] = useState(false);
+
+    if (!currentUser || !userProfile) return null;
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!currentUser || !userProfile || isPosting) {
-            toast.error("Log in and complete your profile to post.");
-            return;
-        }
-        if (newPostContent.trim() === '') return;
+        if (content.trim() === '' || content.length > MAX_CHARS) return;
 
         setIsPosting(true);
-
+        
         try {
             await addDoc(collection(db, 'posts'), {
-                uid: userProfile.uid,
+                uid: currentUser.uid,
                 username: userProfile.username,
                 userProfilePic: userProfile.profilePicUrl || '/default-avatar.png',
-                content: newPostContent.trim(),
+                content: content.trim(),
                 timestamp: serverTimestamp(),
                 likes: 0,
                 comments: 0,
                 shares: 0,
-                isVerified: userProfile.isVerified || isAdmin,
-                isAdmin: isAdmin,
-                isAnnouncement: false,
-                // postImageUrl: null, // For future image upload
+                isVerified: userProfile.isVerified || false,
+                isAdmin: userProfile.isAdmin || false,
             });
 
-            setNewPostContent('');
-            toast.success("Vibe successfully posted!");
+            setContent('');
+            toast.success("Vibe shared successfully!");
         } catch (error) {
-            console.error("Error submitting post:", error);
-            toast.error("Failed to post. Try again.");
+            console.error("Error creating post:", error);
+            toast.error("Failed to share vibe. Try again.");
         } finally {
             setIsPosting(false);
         }
     };
 
-    if (!currentUser || !userProfile) {
-        return (
-            <div className="p-4 bg-gc-card/50 rounded-xl text-center text-gray-400 border-2 border-gc-primary/30">
-                <p>🚀 **Log in** to share your vibe with the Squad!</p>
-            </div>
-        );
-    }
+    const charCount = content.length;
+    const charColor = charCount > MAX_CHARS ? 'text-red-500' : 'text-gray-500';
 
     return (
-        <motion.div 
-            initial={{ scale: 0.98, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="p-4 bg-gc-card shadow-2xl border-b border-gc-primary/50"
-        >
-            <h2 className="text-xl font-bold text-white mb-3 flex items-center space-x-2">
-                <FiFeather className="text-gc-secondary" /> <span>Start a Vibe</span>
-            </h2>
-            <form onSubmit={handlePostSubmit} className="space-y-3">
-                <textarea
-                    value={newPostContent}
-                    onChange={(e) => setNewPostContent(e.target.value)}
-                    placeholder={`What's the vibe, @${userProfile.username}?`}
-                    rows="3"
-                    className="w-full p-3 bg-gc-vibe border border-gc-border rounded-lg text-white placeholder-gray-500 focus:ring-1 focus:ring-gc-secondary transition"
-                    maxLength={280}
+        <div className="p-4 border-b border-gc-border">
+            <div className="flex space-x-4">
+                <img 
+                    src={userProfile.profilePicUrl || '/default-avatar.png'} 
+                    alt={userProfile.username} 
+                    className="w-12 h-12 rounded-full object-cover flex-shrink-0"
                 />
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center space-x-3">
-                        <motion.button 
-                            type="button" 
-                            whileHover={{ scale: 1.1 }} 
-                            className="text-gc-secondary hover:text-gc-primary transition"
-                            title="Add Photo/Video"
-                        >
-                            <FiImage className="w-5 h-5" />
-                        </motion.button>
-                        {/* More options here */}
-                    </div>
-                    <div className='flex items-center space-x-3'>
-                        <span className="text-sm text-gray-500">{280 - newPostContent.length} characters left</span>
+                
+                <form onSubmit={handleSubmit} className="flex-1">
+                    <textarea
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        placeholder={`What's the vibe, @${userProfile.username}?`}
+                        rows="3"
+                        className="w-full p-2 bg-gc-vibe text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gc-primary border-none resize-none"
+                    />
+                    
+                    <div className="flex justify-between items-center pt-2 border-t border-gc-border">
+                        <span className={`text-sm ${charColor}`}>{charCount} / {MAX_CHARS}</span>
+                        
                         <motion.button
                             type="submit"
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            disabled={newPostContent.trim() === '' || isPosting}
-                            className="flex items-center space-x-2 px-6 py-2 bg-gc-primary text-white font-bold rounded-full disabled:opacity-50 transition duration-300 shadow-gc-glow-primary"
+                            disabled={isPosting || content.trim().length === 0 || charCount > MAX_CHARS}
+                            className="flex items-center space-x-2 px-5 py-2 bg-gc-primary text-white font-bold rounded-full disabled:opacity-50 transition duration-300 shadow-gc-glow"
                         >
-                            {isPosting ? 'Posting...' : <><FiSend /> <span>Post Vibe</span></>}
+                            <FaFeatherAlt />
+                            <span>Post</span>
                         </motion.button>
                     </div>
-                </div>
-            </form>
-        </motion.div>
+                </form>
+            </div>
+        </div>
     );
 };
 
