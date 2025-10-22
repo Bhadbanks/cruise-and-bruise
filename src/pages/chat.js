@@ -1,11 +1,11 @@
 // src/pages/chat.js
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FiMessageCircle, FiSearch, FiArrowLeft } from 'react-icons/fi';
+import { FiMessageCircle, FiSearch, FiArrowLeft, FiCircle } from 'react-icons/fi';
 import { collection, query, getDocs } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import { useAuth } from '../utils/AuthContext';
-import ChatWindow from '../components/ChatWindow'; // The missing component
+import ChatWindow from '../components/ChatWindow'; 
 import toast from 'react-hot-toast';
 
 const ChatPage = () => {
@@ -25,7 +25,7 @@ const ChatPage = () => {
                 const snapshot = await getDocs(q);
                 const fetchedMembers = snapshot.docs
                     .map(doc => doc.data())
-                    .filter(user => user.uid !== currentUser.uid); // Exclude self
+                    .filter(user => user.uid !== currentUser.uid); 
                 setMembers(fetchedMembers);
             } catch (error) {
                 console.error("Error fetching members:", error);
@@ -42,11 +42,7 @@ const ChatPage = () => {
         user.username.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    if (loading) return null; // Wait for AppShell loading
-
-    if (!currentUser) {
-        return <div className="p-8 text-center text-red-500">You must be logged in to access the chat hub.</div>;
-    }
+    if (loading) return null; 
 
     return (
         <motion.div 
@@ -86,7 +82,11 @@ const ChatPage = () => {
                                 onClick={() => setSelectedUser(user)}
                                 className={`flex items-center space-x-3 p-3 rounded-xl cursor-pointer transition duration-200 ${selectedUser?.uid === user.uid ? 'bg-gc-primary/20 border border-gc-primary' : 'bg-gc-card hover:border-gc-secondary/50 border border-gc-card'}`}
                             >
-                                <img src={user.profilePicUrl || '/default-avatar.png'} alt={user.username} className="w-10 h-10 rounded-full object-cover" />
+                                <div className="relative">
+                                    <img src={user.profilePicUrl || '/default-avatar.png'} alt={user.username} className="w-10 h-10 rounded-full object-cover" />
+                                    {/* Online Status */}
+                                    <FiCircle className={`absolute bottom-0 right-0 w-3 h-3 ${user.isOnline ? 'text-green-500' : 'text-gray-500'} bg-gc-vibe rounded-full border border-gc-vibe`} />
+                                </div>
                                 <div>
                                     <p className="font-semibold text-white">@{user.username}</p>
                                     <p className="text-gray-400 text-sm truncate">{user.bio || 'New member'}</p>
@@ -121,5 +121,7 @@ const ChatPage = () => {
         </motion.div>
     );
 };
+
+ChatPage.displayName = 'ChatPage';
 
 export default ChatPage;
