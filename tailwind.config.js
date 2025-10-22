@@ -1,30 +1,28 @@
-// tailwind.config.js (in your project root)
+// tailwind.config.js (in project root)
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       colors: {
-        // GC VIBE PREMIUM PALETTE
-        'gc-vibe': '#0D0A1E',          // Deepest Background (Starry Night Vibe)
-        'gc-card': '#1B152C',          // Card/Box Background (Darker Contrast)
-        'gc-border': '#352A50',        // Subtle Separator/Border
-        'gc-primary': '#FF6B81',       // Rose Pink/Red (CTA, High Energy)
-        'gc-secondary': '#6C5CE7',     // Electric Purple (Accents, Hover)
-        'gc-text': '#EAEAEA',          // Light/White Text
-        'gc-admin': '#FFD700',         // Gold for Admin
-        'gc-verified': '#00C9FF',      // Icy Blue for Verified
+        // SPECIAL SQUAD VIBE PREMIUM PALETTE (Twitter/X Style Dark)
+        'gc-vibe': '#08080D',          // Deepest Background (Pitch Black, Modern)
+        'gc-card': '#15151F',          // Card/Box Background (Slightly Lighter Contrast)
+        'gc-border': '#2F2F40',        // Subtle Separator/Border
+        'gc-primary': '#1D9BF0',       // Twitter Blue (Main CTA/Accent)
+        'gc-secondary': '#F91880',     // Rose Pink (Likes/Alternative Accent)
+        'gc-text': '#E7E9EA',          // Light/White Text
+        'gc-admin': '#FFD700',         // Gold for Admin (Crown)
+        'gc-verified': '#1D9BF0',      // Blue for Verified (Checkmark)
       },
       boxShadow: {
-        'gc-glow-primary': '0 0 10px rgba(255, 107, 129, 0.5)',
-        'gc-glow-secondary': '0 0 10px rgba(108, 92, 231, 0.5)',
+        'gc-glow': '0 0 10px rgba(29, 155, 240, 0.4)', // Blue glow for emphasis
       },
       backgroundImage: {
-        'gc-gradient': 'radial-gradient(circle at 50% 10%, rgba(108, 92, 231, 0.15), transparent 60%)',
+        'gc-gradient': 'radial-gradient(circle at 50% 10%, rgba(29, 155, 240, 0.05), transparent 70%)',
       }
     },
   },
