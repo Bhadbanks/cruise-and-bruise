@@ -4,84 +4,63 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../utils/AuthContext';
 import GlobalLoading from './GlobalLoading';
 import Header from './Header';
+import RightColumn from './RightColumn'; // We'll keep this separate
 import Footer from './Footer';
-import RightColumn from './RightColumn';
 
-const protectedRoutes = ['/', '/members', '/chat', '/admin', '/settings'];
 const authRoutes = ['/login', '/register', '/gc-join'];
 
 const AppShell = ({ children }) => {
     const { currentUser, userProfile, loading, isAdmin } = useAuth();
     const router = useRouter();
-    const isProtected = protectedRoutes.some(route => router.pathname.startsWith(route) && route !== '/');
     const isAuthRoute = authRoutes.includes(router.pathname);
-    const isHomePage = router.pathname === '/';
     
-    // --- 1. Initial Loading State ---
+    // --- 1. Initial Loading State (Show centered global loader) ---
     if (loading) {
         return <GlobalLoading />;
     }
-
+    
     // --- 2. Auth Protection Logic ---
-    if (isProtected && !currentUser) {
-        // Allow unauthenticated users to see a PUBLIC version of the feed/homepage
-        if (isHomePage) {
-            // No redirect, allow rendering with limited features
-        } else {
-            router.push('/login');
-            return <GlobalLoading />; 
-        }
-    }
-    
-    // --- 3. Profile Setup Enforcement ---
-    if (currentUser && !userProfile && router.pathname !== '/gc-join') {
-        router.push('/gc-join');
-        return <GlobalLoading />;
-    }
-    
-    // --- 4. Post-Login Redirection (FIXED) ---
-    if (currentUser && userProfile && isAuthRoute && router.pathname !== '/gc-join') {
-        router.push('/');
+    // If not logged in and on a protected page (excluding /), redirect.
+    if (!currentUser && !isAuthRoute && router.pathname !== '/') {
+        router.push('/login');
         return <GlobalLoading />;
     }
 
-    // --- 5. Admin Protection ---
-    if (router.pathname === '/admin' && !isAdmin) {
-        router.push('/');
-        return <GlobalLoading />; 
-    }
-
-    // --- Render Logic ---
-    const isFullPage = isAuthRoute || router.pathname === '/404';
-
-    if (isFullPage) {
+    // --- 3. Full Page Layout (Login/Register/404) ---
+    if (isAuthRoute || router.pathname === '/404') {
         return <>{children}</>;
     }
-    
+
+    // --- 4. Main App Layout (Twitter/X 3-Column Style) ---
     return (
         <div className="min-h-screen bg-gc-vibe">
-            <Header />
-            <main className="max-w-6xl mx-auto px-4 pt-16">
-                <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr_300px] gap-6">
-                    {/* Left Column (Navigation - Hidden on mobile) */}
-                    <div className="hidden lg:block">
-                        <div className="sticky top-20">
-                            {/* Navigation Links go here (e.g., in Header component) */}
-                            <p className="text-gray-500">Navigation...</p>
-                        </div>
+            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-[200px_1fr_300px] xl:grid-cols-[250px_1fr_350px] gap-0">
+                
+                {/* 1. Left Column (Navigation - Fixed and sticky on desktop) */}
+                <div className="hidden lg:block border-r border-gc-border/50">
+                    <div className="sticky top-0 h-screen overflow-y-auto custom-scrollbar">
+                        <Header /> 
                     </div>
-                    
-                    {/* Center Column (Main Content) */}
-                    <div className="col-span-1 min-h-[80vh] border-x border-gc-border">
+                </div>
+                
+                {/* 2. Center Column (Main Content - Feed, Profile, Chat) */}
+                <div className="col-span-1 border-x border-gc-border/50">
+                    <header className="lg:hidden">
+                        <Header /> {/* Mobile Header for Navigation */}
+                    </header>
+                    <main className="min-h-[90vh] pb-20">
                         {children}
-                    </div>
+                    </main>
+                </div>
 
-                    {/* Right Column (Widgets - Hidden on small screens) */}
-                    <div className="hidden lg:block">
+                {/* 3. Right Column (Widgets - Fixed and sticky on desktop) */}
+                <div className="hidden lg:block border-l border-gc-border/50">
+                    <div className="sticky top-0 h-screen overflow-y-auto custom-scrollbar p-4">
                         <RightColumn />
                     </div>
                 </div>
-            </main>
+            </div>
+            
             <Footer />
         </div>
     );
