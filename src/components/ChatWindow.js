@@ -114,7 +114,7 @@ const ChatWindow = ({ targetUser, onCloseChat }) => {
                 <motion.button 
                     onClick={onCloseChat} 
                     whileHover={{ scale: 1.1 }}
-                    className="p-1 text-gray-400 hover:text-gc-primary transition hidden lg:block" // Hidden on small screens if we use the back button
+                    className="p-1 text-gray-400 hover:text-gc-primary transition hidden lg:block" 
                 >
                     <FiX className="w-5 h-5" />
                 </motion.button>
