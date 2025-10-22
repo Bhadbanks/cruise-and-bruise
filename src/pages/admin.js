@@ -1,27 +1,30 @@
 // src/pages/admin.js
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaCrown, FaCheckCircle, FaFeatherAlt } from 'react-icons/fa';
+import { FaCrown } from 'react-icons/fa';
 import { FiAlertCircle, FiUserCheck, FiSend } from 'react-icons/fi';
 import { useAuth } from '../utils/AuthContext';
 import { db } from '../utils/firebase';
-import { collection, query, getDocs, updateDoc, doc, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import toast from 'react-hot-toast';
-import UserCard from '../components/UserCard'; // Reused for user moderation
+import UserCard from '../components/UserCard'; 
+import GlobalLoading from '../components/GlobalLoading';
 
 const AdminPage = () => {
-    const { isAdmin, userProfile } = useAuth();
+    const { isAdmin, userProfile, toggleVerification, loading: authLoading } = useAuth();
     const [users, setUsers] = useState([]);
     const [announcementContent, setAnnouncementContent] = useState('');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (isAdmin) {
+        if (!authLoading && isAdmin) {
             fetchUsers();
-        } else if (!isAdmin && userProfile) {
+        } else if (!authLoading && userProfile && !isAdmin) {
+            // Already logged in but not admin, prevent loading
+            setLoading(false); 
             toast.error("Access Denied: Admin privileges required.");
         }
-    }, [isAdmin, userProfile]);
+    }, [isAdmin, authLoading, userProfile]);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -29,7 +32,8 @@ const AdminPage = () => {
             const q = query(collection(db, 'users'));
             const snapshot = await getDocs(q);
             const fetchedUsers = snapshot.docs.map(doc => doc.data());
-            setUsers(fetchedUsers.filter(u => !u.isAdmin)); // Filter out admin user(s)
+            // Filter out the Admin account for the list
+            setUsers(fetchedUsers.filter(u => !u.isAdmin)); 
         } catch (error) {
             console.error("Error fetching users:", error);
             toast.error("Failed to load user list.");
@@ -40,8 +44,7 @@ const AdminPage = () => {
 
     const handleToggleVerified = async (uid, status) => {
         try {
-            const userRef = doc(db, 'users', uid);
-            await updateDoc(userRef, { isVerified: status });
+            await toggleVerification(uid, status);
             toast.success(status ? "User verified!" : "Verification removed.");
             fetchUsers(); // Refresh list
         } catch (error) {
@@ -64,19 +67,21 @@ const AdminPage = () => {
                 likes: 0,
                 comments: 0,
                 shares: 0,
-                isVerified: true,
+                isVerified: true, // Announcements are always verified
                 isAdmin: true,
-                isAnnouncement: true, // Key marker for announcements
+                isAnnouncement: true, // Key marker for announcements (System Post)
             });
 
             setAnnouncementContent('');
-            toast.success("Squad Announcement posted successfully!");
+            toast.success("Squad Announcement posted successfully! (System Post)");
         } catch (error) {
             console.error("Error posting announcement:", error);
             toast.error("Failed to post announcement.");
         }
     };
 
+    if (authLoading) return <GlobalLoading />;
+    
     if (!isAdmin) {
         return <motion.div className="p-8 text-center text-red-500">You must be the 👑 Admin 👑 to view this page.</motion.div>;
     }
@@ -102,7 +107,7 @@ const AdminPage = () => {
                     <textarea
                         value={announcementContent}
                         onChange={(e) => setAnnouncementContent(e.target.value)}
-                        placeholder="Type your official message for all Squad members..."
+                        placeholder="Type your official message for all Squad members (System Post)..."
                         rows="4"
                         className="w-full p-3 bg-gc-vibe border border-gc-border rounded-lg text-white placeholder-gray-500 focus:ring-1 focus:ring-red-500 transition"
                         maxLength={500}
@@ -115,7 +120,7 @@ const AdminPage = () => {
                         className="flex items-center space-x-2 px-6 py-2 bg-red-600 text-white font-bold rounded-full disabled:opacity-50 transition duration-300"
                     >
                         <FiSend />
-                        <span>Post Announcement</span>
+                        <span>Post Announcement (System)</span>
                     </motion.button>
                 </form>
             </div>
@@ -143,5 +148,7 @@ const AdminPage = () => {
         </div>
     );
 };
+
+AdminPage.displayName = 'AdminPage';
 
 export default AdminPage;
