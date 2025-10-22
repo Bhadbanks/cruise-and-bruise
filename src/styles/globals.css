@@ -27,11 +27,11 @@ body {
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  /* PREMIUM AESTHETIC UPGRADE: Subtle texture/pattern */
-  background-image: 
-    radial-gradient(circle at 50% 10%, rgba(108, 92, 231, 0.15), transparent 60%),
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.01) 0px, rgba(255, 255, 255, 0.01) 2px, transparent 2px, transparent 10px);
+  
+  /* NEW: Add a subtle texture/mesh background for a premium feel */
+  background-image: url('/vibe-texture.png'), radial-gradient(circle at 50% 10%, rgba(108, 92, 231, 0.15), transparent 60%);
+  background-attachment: fixed; /* Keeps the texture stable */
+  background-size: cover;
 }
 
 /* Fix for large Next.js image placeholder */
