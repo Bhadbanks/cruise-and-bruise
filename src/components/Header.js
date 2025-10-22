@@ -49,13 +49,11 @@ const Header = () => {
         animate={{ scale: 1 }}
         className="flex items-center space-x-2 text-white font-extrabold text-2xl"
     >
-        <img 
-            src="/logo.png" 
-            alt="Squad Logo" 
-            // ⚠️ CRITICAL FIX: Ensure the logo size is strictly defined
-            className="w-8 h-8 object-contain" // Use object-contain to prevent stretching
-        /> 
-        <span className="hidden sm:block text-gc-primary">SquadVibe</span>
+        {/* FIX: Set w-8 h-8 on the image to control the size */}
+        <img src="/logo.png" alt="Special Squad Logo" className="w-8 h-8 object-contain" />
+        
+        {/* FIX: Use the special name */}
+        <span className="hidden sm:block text-gc-primary">👑✨ Special Squad ✨👑</span>
     </motion.a>
 </Link>
 
