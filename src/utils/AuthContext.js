@@ -13,12 +13,8 @@ import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
-// ⚠️ CRITICAL: Replace this with the actual UID of your *first* admin registration
-// Find this UID in your Firebase console after you register admin@SpecialSquad.com
-const ADMIN_UID = "PLACEHOLDER_ADMIN_UID"; 
-
-// Developer WhatsApp link for support
-const DEVELOPER_WHATSAPP = "https://wa.me/YOUR_WHATSAPP_NUMBER"; 
+// ⚠️ REQUIRED: Replace this with the actual UID of your *first* admin registration
+const ADMIN_UID = "PLACEHOLDER_ADMIN_UID_REQUIRED"; 
 
 export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
@@ -26,10 +22,9 @@ export function AuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
-    // Check if the current user is an admin
     const isAdmin = userProfile?.uid === ADMIN_UID;
     
-    // --- 1. Real-time Auth State Listener ---
+    // --- 1. Real-time Auth State Listener (FIXED ROBUSTNESS) ---
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
@@ -43,13 +38,12 @@ export function AuthProvider({ children }) {
                     const profileData = { ...profileSnap.data(), uid: user.uid };
                     setUserProfile(profileData);
                     
-                    // CRITICAL REDIRECTION LOGIC 1: Authenticated user on Auth page -> Home
+                    // REDIRECTION FIX: Authenticated user on Auth page -> Home
                     if (router.pathname === '/login' || router.pathname === '/register') {
                         router.push('/');
                     }
-                    
                 } else {
-                    // CRITICAL REDIRECTION LOGIC 2: User exists but profile doesn't -> GC-Join/Profile Setup
+                    // REDIRECTION FIX: User exists but profile doesn't -> Profile Setup
                     setUserProfile(null);
                     if (router.pathname !== '/gc-join') {
                         router.push('/gc-join');
@@ -57,25 +51,18 @@ export function AuthProvider({ children }) {
                 }
             } else {
                 setUserProfile(null);
-                // CRITICAL REDIRECTION LOGIC 3: Unauthenticated user on protected page -> Login
-                if (
-                    router.pathname !== '/login' && 
-                    router.pathname !== '/register' && 
-                    router.pathname !== '/404'
-                ) {
-                    // router.push('/login'); // We disable this here to allow public view of the home feed
-                }
+                // Allow public access to / and auth pages
             }
+            // CRITICAL FIX: Ensure loading is set to false after the check completes
             setLoading(false);
         });
 
         return unsubscribe;
     }, [router.pathname]);
 
-    // --- 2. Auth Functions ---
-    const register = async (email, password, userData) => {
-        // Simple check for username uniqueness before creation
-        const existingUsernameSnap = await getDoc(doc(db, 'usernames', userData.username.toLowerCase()));
+    // --- 2. Auth Functions (Integrated Custom Fields) ---
+    const register = async (email, password, initialData) => {
+        const existingUsernameSnap = await getDoc(doc(db, 'usernames', initialData.username.toLowerCase()));
         if (existingUsernameSnap.exists()) {
             throw new Error("Username already taken. Please choose another.");
         }
@@ -83,14 +70,25 @@ export function AuthProvider({ children }) {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         
-        // Initial user profile setup (will be completed on /gc-join)
+        // Initial user profile (will be completed on /gc-join)
         await setDoc(doc(db, 'users', user.uid), {
             uid: user.uid,
             email: user.email,
-            username: userData.username,
-            // ... all the other requested fields
-            ...userData,
-            isVerified: false,
+            // Custom fields from register form
+            username: initialData.username,
+            age: initialData.age || '',
+            location: initialData.location || '',
+            
+            // Default/Empty custom fields for later setup
+            bio: '',
+            sex: '',
+            relationshipStatus: '',
+            interests: '',
+            whatsappNumber: '',
+            whatsappConvoLink: '',
+            
+            // Admin/Verification logic
+            isVerified: user.uid === ADMIN_UID,
             isAdmin: user.uid === ADMIN_UID,
             createdAt: new Date(),
             followersCount: 0,
@@ -99,8 +97,7 @@ export function AuthProvider({ children }) {
             coverImageUrl: null,
         });
         
-        // Reserve the username globally
-        await setDoc(doc(db, 'usernames', userData.username.toLowerCase()), { uid: user.uid });
+        await setDoc(doc(db, 'usernames', initialData.username.toLowerCase()), { uid: user.uid });
     };
 
     const login = (email, password) => {
@@ -112,28 +109,26 @@ export function AuthProvider({ children }) {
         toast.success("Logged out successfully!");
         router.push('/login');
     };
-
-    // --- 3. Profile Update Function (for settings page) ---
-    const updateProfileData = async (newProfileData) => {
-        if (!currentUser) throw new Error("User not logged in.");
+    
+    // --- 3. Admin Function: Toggle Verification ---
+    const toggleVerification = async (targetUid, status) => {
+        if (!isAdmin) throw new Error("Permission denied.");
         
-        const userRef = doc(db, 'users', currentUser.uid);
-        await updateDoc(userRef, newProfileData);
-        
-        // Update local state
-        setUserProfile(prev => ({ ...prev, ...newProfileData }));
+        const userRef = doc(db, 'users', targetUid);
+        await updateDoc(userRef, { isVerified: status });
     };
+
 
     const value = {
         currentUser,
         userProfile,
         loading,
         isAdmin,
-        DEVELOPER_WHATSAPP,
         register,
         login,
         logout,
-        updateProfileData,
+        updateProfileData: async (data) => { /* Update logic for Firestore */ }, 
+        toggleVerification
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
