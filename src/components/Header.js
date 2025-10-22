@@ -7,7 +7,6 @@ import { FiHome, FiUsers, FiMessageCircle, FiUser, FiLogOut, FiSettings } from '
 import { FaCrown, FaFeatherAlt } from 'react-icons/fa';
 import { useAuth } from '../utils/AuthContext';
 
-// Simplified Name for Code Consistency
 const GC_NAME = "👑✨ Special Squad ✨👑"; 
 
 const NavItem = ({ href, icon: Icon, label, isAdmin }) => {
@@ -15,8 +14,6 @@ const NavItem = ({ href, icon: Icon, label, isAdmin }) => {
     const isActive = router.pathname === href;
     const activeClass = isActive ? 'text-gc-primary font-bold' : 'text-gc-text hover:text-gc-primary';
     const baseClass = "flex items-center space-x-3 p-3 rounded-full transition duration-200 hover:bg-gc-card/50";
-    
-    // Admin links use the special admin color
     const itemClass = isAdmin ? 'text-gc-admin' : activeClass;
 
     return (
@@ -37,7 +34,7 @@ const Header = () => {
     if (loading) return null;
 
     const navLinks = [
-        { href: '/feed', icon: FiHome, label: 'Home' }, // Home is now /feed
+        { href: '/feed', icon: FiHome, label: 'Home' }, 
         { href: '/members', icon: FiUsers, label: 'Members' },
         { href: '/chat', icon: FiMessageCircle, label: 'Messages' },
         { href: `/profile/${userProfile?.username || 'me'}`, icon: FiUser, label: 'Profile' },
@@ -49,7 +46,7 @@ const Header = () => {
                 
                 {/* 1. Mobile/Brand Logo (FIXED SIZE & NAME) */}
                 <div className="lg:hidden flex items-center justify-between w-full">
-                    <Link href="/" legacyBehavior>
+                    <Link href="/feed" legacyBehavior>
                         <motion.a 
                             initial={{ scale: 0.9 }}
                             animate={{ scale: 1 }}
@@ -57,7 +54,6 @@ const Header = () => {
                         >
                             {/* FIXED LOGO SIZE: w-8 h-8 */}
                             <img src="/logo.png" alt="Squad Logo" className="w-8 h-8 object-contain" />
-                            {/* FIXED NAME (using the simplified text name for clarity) */}
                             <span className="text-gc-primary">{GC_NAME}</span>
                         </motion.a>
                     </Link>
