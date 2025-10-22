@@ -2,46 +2,46 @@
 import React, { useState, useEffect } from 'react';
 import { FiSearch, FiGlobe } from 'react-icons/fi';
 import { motion } from 'framer-motion';
-import { collection, query, limit, getDocs, where } from 'firebase/firestore';
+import { collection, query, limit, getDocs } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import Link from 'next/link';
+import { useAuth } from '../utils/AuthContext';
 
-// Placeholder for external news API integration (Twitter/X style trends)
+// Placeholder for external news/trending (as per request - System Posts)
 const NewsWidget = () => (
     <div className="bg-gc-card rounded-xl p-4 mb-4 border border-gc-border">
-        <h3 className="text-xl font-bold text-white mb-3">What's Happening</h3>
+        <h3 className="text-xl font-bold text-white mb-3">What's Happening (System/Trending)</h3>
         <ul className="space-y-3 text-sm">
             {[
-                { title: "#SquadGoals", count: "1.2K Vibes" },
-                { title: "New Firebase Update", count: "500 Posts" },
-                { title: "Trending in Lagos", count: "899 Talks" },
+                { title: "GC: New Admin Announcement Posted!", count: "System Post" },
+                { title: "#SquadGoals Trending", count: "1.2K Vibes" },
+                { title: "New Feature: Online Status!", count: "System Update" },
             ].map((item, index) => (
                 <motion.li 
                     key={index}
                     whileHover={{ backgroundColor: '#15151F', scale: 1.01 }}
                     className="p-2 -mx-2 rounded-lg transition duration-200 cursor-pointer"
                 >
-                    <p className="text-gray-500 text-xs">Trending</p>
+                    <p className={`text-xs ${item.count.includes('System') ? 'text-red-500 font-bold' : 'text-gray-500'}`}>{item.count}</p>
                     <p className="font-semibold text-white">{item.title}</p>
-                    <p className="text-gray-500 text-xs">{item.count}</p>
                 </motion.li>
             ))}
         </ul>
     </div>
 );
 
-// Suggests users to follow
 const WhoToFollowWidget = () => {
+    const { currentUser } = useAuth();
     const [users, setUsers] = useState([]);
 
     useEffect(() => {
         const fetchUsers = async () => {
-            const q = query(collection(db, 'users'), limit(3)); // Get 3 random users
+            const q = query(collection(db, 'users'), limit(3)); 
             const snapshot = await getDocs(q);
-            setUsers(snapshot.docs.map(doc => doc.data()));
+            setUsers(snapshot.docs.map(doc => doc.data()).filter(user => user.uid !== currentUser?.uid));
         };
         fetchUsers();
-    }, []);
+    }, [currentUser]);
 
     return (
         <div className="bg-gc-card rounded-xl p-4 mb-4 border border-gc-border">
@@ -60,7 +60,7 @@ const WhoToFollowWidget = () => {
                         </Link>
                         <motion.button 
                             whileHover={{ scale: 1.05 }} 
-                            className="bg-gc-text text-gc-card font-bold text-sm px-3 py-1 rounded-full"
+                            className="bg-gc-primary text-gc-card font-bold text-sm px-3 py-1 rounded-full"
                         >
                             Follow
                         </motion.button>
@@ -96,7 +96,7 @@ const SquadContactWidget = () => (
 const RightColumn = () => {
     return (
         <div className="space-y-4">
-            {/* Search Bar (Twitter/X Style) */}
+            {/* Search Bar (Sticky) */}
             <div className="sticky top-0 pt-4 bg-gc-vibe z-10">
                 <div className="relative">
                     <FiSearch className="absolute left-3 top-3.5 text-gray-400" />
