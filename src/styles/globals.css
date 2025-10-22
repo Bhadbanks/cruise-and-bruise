@@ -1,4 +1,4 @@
-/* src/styles/globals.css (in src/styles folder) */
+/* src/styles/globals.css (UPDATED) */
 
 /* --- CRITICAL: THESE THREE IMPORTS MUST BE PRESENT AND CORRECT --- */
 @tailwind base;
@@ -27,10 +27,23 @@ body {
   padding: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* NEW: Starry Background Gradient */
+  background-image: radial-gradient(circle at 50% 10%, rgba(108, 92, 231, 0.15), transparent 60%), url('/stars.png');
+  background-attachment: fixed; /* Keeps the stars fixed when scrolling */
 }
 
 /* Fix for large Next.js image placeholder */
 img {
   max-width: 100%;
   height: auto;
+}
+
+/* Define a small animation for the logo/loading screen */
+@keyframes flicker-glow {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 107, 129, 0.5); }
+  50% { box-shadow: 0 0 20px rgba(255, 107, 129, 0.8), 0 0 30px rgba(108, 92, 231, 0.6); }
+}
+
+.flicker-glow-animation {
+  animation: flicker-glow 2s infinite alternate;
 }
