@@ -1,227 +1,203 @@
 // src/pages/profile/[username].js
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../../utils/firebase';
-import { useAuth } from '../../utils/AuthContext';
 import { motion } from 'framer-motion';
-import { FaCrown, FaCheckCircle, FaMapMarkerAlt, FaHeart, FaCalendarAlt, FaWhatsapp } from 'react-icons/fa';
-import { FiFeather, FiMail, FiGlobe } from 'react-icons/fi';
+import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
+import { db } from '../../utils/firebase';
+import { FiMapPin, FiHeart, FiGlobe, FiPhone, FiCalendar, FiUser, FiInfo, FiMessageCircle, FiCircle } from 'react-icons/fi';
 import GlobalLoading from '../../components/GlobalLoading';
-import PostCard from '../index'; // Reuse the PostCard component
+import PostCard from '../../components/PostCard'; 
+import toast from 'react-hot-toast';
+import { useAuth } from '../../utils/AuthContext';
 
 const ProfilePage = () => {
     const router = useRouter();
-    const { username } = router.query;
-    const { userProfile: currentUserProfile, currentUser, DEVELOPER_WHATSAPP } = useAuth();
+    const { username: targetUsername } = router.query;
+    const { userProfile: loggedInUser } = useAuth();
     
     const [profileData, setProfileData] = useState(null);
-    const [userPosts, setUserPosts] = useState([]);
+    const [posts, setPosts] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [isFollowing, setIsFollowing] = useState(false); // Simplified for MVP
+    const [loadingPosts, setLoadingPosts] = useState(false);
 
-    // --- Data Fetching ---
     useEffect(() => {
-        if (!username) return;
+        if (!targetUsername) return;
 
-        const fetchProfileData = async () => {
+        const fetchProfile = async () => {
             setLoading(true);
             try {
-                // 1. Fetch User Profile by Username (Unique constraint assumed)
-                const userQuery = query(collection(db, 'users'), where('username', '==', username));
-                const userSnap = await getDocs(userQuery);
-
-                if (userSnap.empty) {
+                // 1. Get UID from username collection
+                const usernameSnap = await getDoc(doc(db, 'usernames', targetUsername.toLowerCase()));
+                if (!usernameSnap.exists()) {
                     setProfileData(null);
                     setLoading(false);
-                    toast.error("Profile not found!");
                     return;
                 }
-                
-                const profile = userSnap.docs[0].data();
-                setProfileData(profile);
-                
-                // 2. Fetch User Posts (Placeholder query, should be optimized)
-                const postsQuery = query(collection(db, 'posts'), where('username', '==', username), limit(10), orderBy('timestamp', 'desc'));
-                const postsSnap = await getDocs(postsQuery);
-                const postsList = postsSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), timeAgo: 'Recent' }));
-                setUserPosts(postsList);
+                const targetUid = usernameSnap.data().uid;
 
-                // 3. Check follow status (Simplified for MVP, actual logic requires a 'followers' collection)
-                // setIsFollowing(checkFollowStatus(currentUserProfile.uid, profile.uid)); 
+                // 2. Get full profile data
+                const userSnap = await getDoc(doc(db, 'users', targetUid));
+                if (userSnap.exists()) {
+                    setProfileData(userSnap.data());
+                    fetchUserPosts(targetUid);
+                } else {
+                    setProfileData(null);
+                }
 
             } catch (error) {
                 console.error("Error fetching profile:", error);
-                toast.error("Failed to load profile.");
+                toast.error("Failed to load user profile.");
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
-
-        if (currentUser) {
-            fetchProfileData();
-        } else {
-            setLoading(false); // Allow unauthenticated user to see if they land here
+        
+        const fetchUserPosts = async (uid) => {
+             setLoadingPosts(true);
+             try {
+                 const postsQuery = query(collection(db, 'posts'), where('uid', '==', uid));
+                 const postSnapshot = await getDocs(postsQuery);
+                 setPosts(postSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+             } catch (error) {
+                 console.error("Error fetching posts:", error);
+                 toast.error("Failed to load user posts.");
+             } finally {
+                 setLoadingPosts(false);
+             }
         }
 
-    }, [username, currentUser]);
+        fetchProfile();
+    }, [targetUsername]);
 
-    // Simplified Follow/Unfollow Handler (Placeholder for now)
-    const handleFollowToggle = () => {
-        if (!currentUser) {
-            toast.error("You must be logged in to follow users.");
-            return;
-        }
-        // *Actual Firestore logic would go here*
-        setIsFollowing(!isFollowing);
-        toast.success(isFollowing ? `Unfollowed @${username}` : `Following @${username}!`);
-    };
-
-    if (loading) {
-        return <GlobalLoading />;
-    }
-
+    if (loading) return <GlobalLoading />;
     if (!profileData) {
         return (
-            <div className="min-h-[60vh] flex items-center justify-center text-white bg-gc-vibe p-4">
-                <p className="text-xl text-gray-500">Sorry, this user profile doesn't exist or was removed.</p>
+            <div className="p-8 text-center text-red-500">
+                <h1 className="text-3xl font-bold">404 Vibe Not Found</h1>
+                <p className="text-gray-400 mt-2">The user @{targetUsername} does not exist in the Squad.</p>
             </div>
         );
     }
     
-    const isOwner = currentUserProfile?.username === username;
-    const { coverImageUrl, profilePicUrl, bio, followersCount = 0, followingCount = 0 } = profileData;
-
-    return (
-        <div className="w-full">
-            {/* Header / Cover Image */}
-            <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="bg-gc-card shadow-2xl border-b-2 border-gc-primary"
-            >
-                <div className="h-40 bg-cover bg-center" style={{ backgroundImage: `url(${coverImageUrl || '/default-cover.jpg'})` }}>
-                    {/* Cover image content */}
-                </div>
-
-                <div className="p-4 relative">
-                    {/* Profile Picture */}
-                    <img 
-                        src={profilePicUrl || '/default-avatar.png'} 
-                        alt={`${username}'s avatar`} 
-                        className="w-24 h-24 rounded-full object-cover border-4 border-gc-vibe absolute -top-12 left-4 shadow-xl"
-                    />
-
-                    {/* Actions */}
-                    <div className="flex justify-end pt-2">
-                        {isOwner ? (
-                            <motion.button 
-                                whileHover={{ scale: 1.05 }} 
-                                className="px-4 py-2 bg-gc-secondary text-white rounded-full font-semibold"
-                                onClick={() => router.push('/settings/profile')} // Placeholder for settings
-                            >
-                                Edit Profile
-                            </motion.button>
-                        ) : (
-                            <motion.button
-                                onClick={handleFollowToggle}
-                                whileHover={{ scale: 1.05 }}
-                                className={`px-4 py-2 rounded-full font-bold transition duration-300 ${
-                                    isFollowing 
-                                        ? 'bg-gc-secondary/20 text-gc-secondary border border-gc-secondary' 
-                                        : 'bg-gc-primary text-white shadow-gc-glow'
-                                }`}
-                            >
-                                {isFollowing ? 'Following' : 'Follow'}
-                            </motion.button>
-                        )}
-                    </div>
-
-                    {/* Basic Info */}
-                    <div className="mt-4">
-                        <div className="flex items-center space-x-1">
-                            <h2 className="text-2xl font-bold text-white">@{username}</h2>
-                            {profileData.isAdmin && <FaCrown className="w-4 h-4 text-gc-admin" title="Admin" />}
-                            {profileData.isVerified && !profileData.isAdmin && <FaCheckCircle className="w-4 h-4 text-gc-verified" title="Verified" />}
-                        </div>
-                        <p className="text-gray-400 mt-1">{bio || 'No bio yet.'}</p>
-                        
-                        <div className="flex space-x-4 text-sm text-gray-500 mt-2">
-                            <span><span className="font-bold text-white">{followingCount}</span> Following</span>
-                            <span><span className="font-bold text-white">{followersCount}</span> Followers</span>
-                        </div>
-                    </div>
-                </div>
-            </motion.div>
-
-            {/* Detailed Info & Posts Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 p-4">
-                
-                {/* Left Column: Details */}
-                <motion.div 
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="col-span-1 bg-gc-card p-6 rounded-xl shadow-lg border border-gc-border h-fit"
-                >
-                    <h3 className="text-xl font-bold text-gc-primary mb-4 border-b border-gc-border pb-2">
-                        Vibe Details
-                    </h3>
-                    <div className="space-y-3 text-gray-300">
-                        <p className="flex items-center space-x-2"><FaMapMarkerAlt className="text-gc-secondary" /> <span>**Location:** {profileData.location || 'N/A'}</span></p>
-                        <p className="flex items-center space-x-2"><FaHeart className="text-gc-primary" /> <span>**Status:** {profileData.relationshipStatus || 'N/A'}</span></p>
-                        <p className="flex items-center space-x-2"><FiMail className="text-white" /> <span>**Email:** {profileData.email || 'Private'}</span></p>
-                        <p className="flex items-center space-x-2"><FaCalendarAlt className="text-gc-secondary" /> <span>**Age/Sex:** {profileData.age || 'N/A'} / {profileData.sex || 'N/A'}</span></p>
-                        <p className="text-sm pt-2">**Interests:** {profileData.interests || 'None listed'}</p>
-                    </div>
-
-                    <h3 className="text-xl font-bold text-gc-primary mt-6 mb-4 border-b border-gc-border pb-2">
-                        Squad Connect
-                    </h3>
-                    <div className="space-y-3">
-                        {profileData.whatsappNumber && (
-                             <motion.a
-                                href={`https://wa.me/${profileData.whatsappNumber.replace(/[^0-9+]/g, '')}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                whileHover={{ scale: 1.02 }}
-                                className="flex items-center justify-center space-x-2 p-2 bg-green-600 text-white rounded-lg font-semibold transition"
-                            >
-                                <FaWhatsapp />
-                                <span>WhatsApp Me (Direct)</span>
-                            </motion.a>
-                        )}
-                        {profileData.whatsappConvoLink && (
-                             <motion.a
-                                href={profileData.whatsappConvoLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                whileHover={{ scale: 1.02 }}
-                                className="flex items-center justify-center space-x-2 p-2 bg-gc-secondary text-white rounded-lg font-semibold transition"
-                            >
-                                <FiGlobe />
-                                <span>WhatsApp Link on Profile</span>
-                            </motion.a>
-                        )}
-                    </div>
-                </motion.div>
-
-                {/* Right Column: User Posts (Main Content) */}
-                <div className="col-span-1 xl:col-span-2 space-y-4">
-                    <h3 className="text-2xl font-bold text-white border-b border-gc-border pb-2 flex items-center space-x-2">
-                        <FiFeather className="text-gc-primary" /> <span>@{username}'s Posts ({userPosts.length})</span>
-                    </h3>
-                    {userPosts.length > 0 ? (
-                        userPosts.map(post => (
-                            // NOTE: PostCard is imported from the index.js file, assuming it's exported there
-                            <PostCard key={post.id} post={post} /> 
-                        ))
+    // Check if the current user is viewing their own profile
+    const isOwner = loggedInUser?.username === profileData.username;
+    
+    // Helper function to render info blocks
+    const InfoBlock = ({ icon: Icon, title, value, link }) => {
+        if (!value) return null;
+        return (
+            <div className="flex items-start space-x-3 text-sm">
+                <Icon className="w-5 h-5 flex-shrink-0 mt-0.5 text-gc-secondary" />
+                <div>
+                    <p className="text-gray-400">{title}</p>
+                    {link ? (
+                        <a href={link} target="_blank" rel="noopener noreferrer" className="text-gc-primary hover:underline font-medium break-all">
+                            {value}
+                        </a>
                     ) : (
-                        <p className="text-center text-gray-500 py-10">This user hasn't posted anything yet.</p>
+                        <p className="text-white font-medium break-words">{value}</p>
                     )}
                 </div>
             </div>
-        </div>
+        );
+    };
+
+    return (
+        <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="w-full bg-gc-vibe"
+        >
+            {/* Cover Image Placeholder */}
+            <div className="h-40 bg-gc-primary/20 relative" style={{ backgroundImage: profileData.coverImageUrl ? `url(${profileData.coverImageUrl})` : 'none', backgroundSize: 'cover' }}>
+                <div className="absolute inset-0 bg-gc-vibe/50"></div>
+            </div>
+
+            {/* Profile Header */}
+            <div className="px-4 -mt-16 pb-4 border-b border-gc-border">
+                <div className="flex justify-between items-end">
+                    <div className="relative">
+                        <img 
+                            src={profileData.profilePicUrl || '/default-avatar.png'} 
+                            alt={profileData.username} 
+                            className="w-32 h-32 rounded-full object-cover border-4 border-gc-vibe shadow-xl"
+                        />
+                        {/* Online Status */}
+                        <FiCircle className={`absolute bottom-0 right-0 w-5 h-5 ${profileData.isOnline ? 'text-green-500' : 'text-gray-500'} bg-gc-vibe rounded-full border border-gc-vibe`} />
+                    </div>
+                    
+                    {/* Action Buttons */}
+                    <div className="flex space-x-2 mb-2">
+                        {!isOwner && (
+                            <motion.button 
+                                whileHover={{ scale: 1.05 }}
+                                className="px-4 py-2 bg-gc-secondary text-white font-bold rounded-full transition"
+                                onClick={() => router.push(`/chat?user=${profileData.uid}`)} // Simple chat route link
+                            >
+                                <FiMessageCircle className="inline w-5 h-5 mr-1" /> Vibe Chat
+                            </motion.button>
+                        )}
+                        <motion.button 
+                            whileHover={{ scale: 1.05 }}
+                            className="px-4 py-2 border border-gc-primary text-gc-primary font-bold rounded-full transition"
+                        >
+                            Follow
+                        </motion.button>
+                    </div>
+                </div>
+                
+                {/* User Details */}
+                <h1 className="text-3xl font-extrabold text-white mt-3 flex items-center space-x-2">
+                    <span>@{profileData.username}</span>
+                    {profileData.isAdmin && <FaCrown className="w-5 h-5 text-gc-admin" title="Admin" />}
+                    {profileData.isVerified && !profileData.isAdmin && <FaCheckCircle className="w-4 h-4 text-gc-verified" title="Verified" />}
+                </h1>
+                <p className="text-gray-400 mt-1 mb-3">{profileData.bio || 'This user is part of the Squad Vibe.'}</p>
+                
+                {/* Stats */}
+                <div className="flex space-x-4 text-sm text-gray-400">
+                    <span><span className="font-bold text-white">{profileData.followingCount || 0}</span> Following</span>
+                    <span><span className="font-bold text-white">{profileData.followersCount || 0}</span> Followers</span>
+                </div>
+            </div>
+
+            {/* Custom Profile Info Section */}
+            <div className="p-4 border-b border-gc-border bg-gc-card/50">
+                <h2 className="text-xl font-bold text-gc-primary mb-4 flex items-center space-x-2"><FiInfo /> <span>Squad Vibe Details</span></h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InfoBlock icon={FiMapPin} title="Location" value={profileData.location} />
+                    <InfoBlock icon={FiCalendar} title="Age" value={profileData.age} />
+                    <InfoBlock icon={FiUser} title="Sex" value={profileData.sex} />
+                    <InfoBlock icon={FiHeart} title="Relationship Status" value={profileData.relationshipStatus} />
+                    
+                    {/* Private Contact Fields */}
+                    <InfoBlock icon={FiPhone} title="WhatsApp Number" value={profileData.whatsappNumber} />
+                    <InfoBlock 
+                        icon={FiGlobe} 
+                        title="Convo Link" 
+                        value={profileData.whatsappConvoLink ? "Connect on WhatsApp" : null}
+                        link={profileData.whatsappConvoLink}
+                    />
+                </div>
+            </div>
+
+            {/* User Posts/Timeline */}
+            <div className="divide-y divide-gc-border">
+                 <h2 className="text-xl font-bold text-white p-4">@{profileData.username}'s Posts ({posts.length})</h2>
+                {loadingPosts ? (
+                    <p className="text-center text-gray-500 py-10">Loading posts...</p>
+                ) : posts.length === 0 ? (
+                    <p className="text-center text-gray-500 py-10">This user hasn't shared any vibes yet.</p>
+                ) : (
+                    posts.map(post => (
+                        <PostCard key={post.id} post={post} />
+                    ))
+                )}
+            </div>
+        </motion.div>
     );
 };
+
+ProfilePage.displayName = 'ProfilePage'; 
 
 export default ProfilePage;
