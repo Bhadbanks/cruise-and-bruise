@@ -1,145 +1,142 @@
-// src/utils/AuthContext.js
-import { createContext, useContext, useState, useEffect } from 'react';
+// src/utils/AuthContext.js (in src/utils folder)
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import { auth, db } from './firebase';
 import { 
+    onAuthStateChanged, 
     createUserWithEmailAndPassword, 
     signInWithEmailAndPassword, 
-    signOut, 
-    onAuthStateChanged 
+    signOut 
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, query, collection, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
-// --- HARDCODED ADMIN/GC DATA ---
-const ADMIN_UID = 'special_squad_admin_uid_placeholder'; // Placeholder: REPLACE THIS with the actual UID of the 'admin@SpecialSquad.com' account in Firestore after its first login.
-const ADMIN_USERNAME = 'Lowkey';
-const GC_LINK_DOC_ID = 'settings';
-const DEFAULT_GC_LINK = 'https://chat.whatsapp.com/Ll3R7OUbdjq3HsehVpskpz?mode=ems_copy_t';
-const DEVELOPER_WHATSAPP = 'wa.me/2348082591190';
+// ⚠️ CRITICAL: Replace this with the actual UID of your *first* admin registration
+// Find this UID in your Firebase console after you register admin@SpecialSquad.com
+const ADMIN_UID = "PLACEHOLDER_ADMIN_UID"; 
+
+// Developer WhatsApp link for support
+const DEVELOPER_WHATSAPP = "https://wa.me/YOUR_WHATSAPP_NUMBER"; 
 
 export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [userProfile, setUserProfile] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [gcLink, setGcLink] = useState(DEFAULT_GC_LINK);
+    const router = useRouter();
 
+    // Check if the current user is an admin
     const isAdmin = userProfile?.uid === ADMIN_UID;
+    
+    // --- 1. Real-time Auth State Listener ---
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            setCurrentUser(user);
+            
+            if (user) {
+                // Fetch User Profile
+                const profileRef = doc(db, 'users', user.uid);
+                const profileSnap = await getDoc(profileRef);
+                
+                if (profileSnap.exists()) {
+                    const profileData = { ...profileSnap.data(), uid: user.uid };
+                    setUserProfile(profileData);
+                    
+                    // CRITICAL REDIRECTION LOGIC 1: Authenticated user on Auth page -> Home
+                    if (router.pathname === '/login' || router.pathname === '/register') {
+                        router.push('/');
+                    }
+                    
+                } else {
+                    // CRITICAL REDIRECTION LOGIC 2: User exists but profile doesn't -> GC-Join/Profile Setup
+                    setUserProfile(null);
+                    if (router.pathname !== '/gc-join') {
+                        router.push('/gc-join');
+                    }
+                }
+            } else {
+                setUserProfile(null);
+                // CRITICAL REDIRECTION LOGIC 3: Unauthenticated user on protected page -> Login
+                if (
+                    router.pathname !== '/login' && 
+                    router.pathname !== '/register' && 
+                    router.pathname !== '/404'
+                ) {
+                    // router.push('/login'); // We disable this here to allow public view of the home feed
+                }
+            }
+            setLoading(false);
+        });
 
-    // --- Core Authentication Functions ---
+        return unsubscribe;
+    }, [router.pathname]);
+
+    // --- 2. Auth Functions ---
     const register = async (email, password, userData) => {
-        // 1. Check for unique username
-        const usernameQuery = query(collection(db, 'users'), where('username', '==', userData.username));
-        const usernameSnap = await getDocs(usernameQuery);
-        if (!usernameSnap.empty) {
-            throw new Error('Username already taken. Please choose another.');
+        // Simple check for username uniqueness before creation
+        const existingUsernameSnap = await getDoc(doc(db, 'usernames', userData.username.toLowerCase()));
+        if (existingUsernameSnap.exists()) {
+            throw new Error("Username already taken. Please choose another.");
         }
-
-        // 2. Create Firebase User
+        
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
         
-        // 3. Create Firestore Profile
-        const profileData = {
+        // Initial user profile setup (will be completed on /gc-join)
+        await setDoc(doc(db, 'users', user.uid), {
             uid: user.uid,
             email: user.email,
             username: userData.username,
-            bio: 'Hello, I just joined the Special Squad!',
-            profilePicUrl: '/default-avatar.png',
-            coverImageUrl: '/default-cover.jpg',
+            // ... all the other requested fields
+            ...userData,
+            isVerified: false,
             isAdmin: user.uid === ADMIN_UID,
-            isVerified: user.uid === ADMIN_UID, // Admin is auto-verified
-            hasJoinedGC: false, // Enforce GC join immediately
-            postsCount: 0,
+            createdAt: new Date(),
             followersCount: 0,
             followingCount: 0,
-            // Additional custom fields
-            age: userData.age || '',
-            location: userData.location || '',
-            interests: userData.interests || '',
-            sex: userData.sex || '',
-            relationshipStatus: userData.relationshipStatus || '',
-            whatsappNumber: userData.whatsappNumber || '',
-            whatsappConvoLink: userData.whatsappConvoLink || '',
-            createdAt: new Date().toISOString(),
-        };
-
-        await setDoc(doc(db, 'users', user.uid), profileData);
+            profilePicUrl: null,
+            coverImageUrl: null,
+        });
         
-        // Success notification
-        toast.success(`Welcome to the Squad, @${userData.username}!`);
-        return user;
+        // Reserve the username globally
+        await setDoc(doc(db, 'usernames', userData.username.toLowerCase()), { uid: user.uid });
     };
 
     const login = (email, password) => {
         return signInWithEmailAndPassword(auth, email, password);
     };
 
-    const logout = () => {
-        toast('Logged out successfully!', { icon: '👋' });
-        return signOut(auth);
+    const logout = async () => {
+        await signOut(auth);
+        toast.success("Logged out successfully!");
+        router.push('/login');
     };
 
-    // --- Profile/GC Link Fetcher ---
-    useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                setCurrentUser(user);
-                
-                // Fetch user profile
-                const docRef = doc(db, 'users', user.uid);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    setUserProfile(docSnap.data());
-                } else {
-                    // This handles cases where auth user exists but profile somehow doesn't
-                    console.error('User profile not found in Firestore.');
-                    setUserProfile(null);
-                }
-            } else {
-                setCurrentUser(null);
-                setUserProfile(null);
-            }
-            setLoading(false);
-        });
-
-        // Fetch GC Link globally
-        const fetchGcLink = async () => {
-            const docRef = doc(db, GC_LINK_DOC_ID, 'gcLink');
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                setGcLink(docSnap.data().url || DEFAULT_GC_LINK);
-            } else {
-                // Initialize default GC Link if doc doesn't exist
-                await setDoc(docRef, { url: DEFAULT_GC_LINK, lastUpdated: new Date().toISOString() });
-            }
-        };
-
-        fetchGcLink();
+    // --- 3. Profile Update Function (for settings page) ---
+    const updateProfileData = async (newProfileData) => {
+        if (!currentUser) throw new Error("User not logged in.");
         
-        return unsubscribe;
-    }, []);
+        const userRef = doc(db, 'users', currentUser.uid);
+        await updateDoc(userRef, newProfileData);
+        
+        // Update local state
+        setUserProfile(prev => ({ ...prev, ...newProfileData }));
+    };
 
     const value = {
         currentUser,
         userProfile,
         loading,
         isAdmin,
+        DEVELOPER_WHATSAPP,
         register,
         login,
         logout,
-        GC_LINK: gcLink,
-        ADMIN_UID,
-        ADMIN_USERNAME,
-        DEVELOPER_WHATSAPP
+        updateProfileData,
     };
 
-    return (
-        <AuthContext.Provider value={value}>
-            {children}
-        </AuthContext.Provider>
-    );
+    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => useContext(AuthContext);
