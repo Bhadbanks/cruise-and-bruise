@@ -1,15 +1,22 @@
-// src/pages/_app.js (in src/pages folder)
+// src/pages/_app.js 
 import '../styles/globals.css';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '../utils/AuthContext';
 import AppShell from '../components/AppShell';
 
 function MyApp({ Component, pageProps }) {
+  // Check for minimal layout pages that shouldn't have the 3-column AppShell
+  const isMinimalLayout = ['splash', 'login', 'register', 'gc-join', '404'].includes(Component.displayName || Component.name);
+
   return (
     <AuthProvider>
-      <AppShell>
+      {isMinimalLayout ? (
         <Component {...pageProps} />
-      </AppShell>
+      ) : (
+        <AppShell>
+          <Component {...pageProps} />
+        </AppShell>
+      )}
       <Toaster 
         position="top-center"
         toastOptions={{
