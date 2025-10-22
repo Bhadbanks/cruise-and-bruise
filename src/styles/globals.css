@@ -1,32 +1,36 @@
-/* src/styles/globals.css */
+/* src/styles/globals.css (in src/styles folder) */
+
+/* --- CRITICAL: THESE THREE IMPORTS MUST BE PRESENT AND CORRECT --- */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Base background for the whole application */
-body {
-  @apply bg-gc-vibe text-white;
-}
-
-/* Custom scrollbar for better aesthetics */
+/* Custom Scrollbar for a premium look */
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #374151; /* Gray-700 */
-}
-
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #E91E63; /* gc-primary */
+  background: #6C5CE7; /* gc-secondary */
   border-radius: 4px;
 }
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #ad1457; /* darker pink */
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #1B152C; /* gc-card */
 }
 
-/* Ensure all links have smooth transitions */
-a {
-  @apply transition duration-200;
+/* Base App Styles */
+body {
+  background-color: #0D0A1E; /* gc-vibe */
+  color: #EAEAEA; /* gc-text */
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Fix for large Next.js image placeholder */
+img {
+  max-width: 100%;
+  height: auto;
 }
