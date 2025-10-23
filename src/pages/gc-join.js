@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
 import { useAuth } from '../utils/AuthContext';
 import toast from 'react-hot-toast';
-import { FiUserCheck, FiSave, FiMapPin, FiHeart, FiPhone, FiGlobe, FiFeather } from 'react-icons/fi';
+import { FiUserCheck, FiSave, FiMapPin, FiHeart, FiPhone, FiUser, FiGlobe, FiFeather, FiCalendar } from 'react-icons/fi'; // Added FiUser, FiCalendar
 import { updateDoc, doc } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import GlobalLoading from '../components/GlobalLoading';
@@ -22,7 +22,7 @@ const GcJoinPage = () => {
         relationshipStatus: userProfile?.relationshipStatus || '',
         interests: userProfile?.interests || '',
         whatsappNumber: userProfile?.whatsappNumber || '',
-        whatsappConvoLink: userProfile?.whatsappConvoLink || '',
+        // Removed whatsappConvoLink from state as it will be derived
     });
     
     // AuthContext handles initial redirects, but ensure the page does not render if complete
@@ -45,10 +45,23 @@ const GcJoinPage = () => {
             setIsSaving(false);
             return;
         }
+        
+        // --- 🏆 FIX: Automatically generate WhatsApp Link ---
+        let whatsappConvoLink = '';
+        if (formData.whatsappNumber) {
+            // Cleans number and formats for wa.me link. E.g., +23480... -> wa.me/23480...
+            const cleanNumber = formData.whatsappNumber.replace(/[^0-9+]/g, '');
+            whatsappConvoLink = `https://wa.me/${cleanNumber.replace('+', '')}`;
+        }
+        // ---------------------------------------------------
 
         try {
             const userRef = doc(db, 'users', currentUser.uid);
-            await updateDoc(userRef, formData);
+            // Include the generated link in the final data sent to Firebase
+            await updateDoc(userRef, {
+                ...formData,
+                whatsappConvoLink: whatsappConvoLink,
+            });
             
             toast.success("Profile setup complete! Welcome to the Squad.");
             router.push('/feed'); 
@@ -95,11 +108,11 @@ const GcJoinPage = () => {
                             <input type="text" name="location" value={formData.location} onChange={handleChange} className={inputClass} placeholder="City, Country" required />
                         </div>
                         <div>
-                            <label className="block text-gray-300 mb-1">Age</label>
+                            <label className="block text-gray-300 mb-1 flex items-center space-x-1"><FiCalendar /> <span>Age</span></label>
                             <input type="number" name="age" value={formData.age} onChange={handleChange} className={inputClass} placeholder="25" required />
                         </div>
                         <div>
-                            <label className="block text-gray-300 mb-1">Sex</label>
+                            <label className="block text-gray-300 mb-1 flex items-center space-x-1"><FiUser /> <span>Sex</span></label>
                             <select name="sex" value={formData.sex} onChange={handleChange} className={inputClass}>
                                 <option value="">Select...</option>
                                 <option value="Male">Male</option>
@@ -127,18 +140,15 @@ const GcJoinPage = () => {
                         </div>
                     </div>
 
-                    {/* WhatsApp Details (Your Custom Fields) */}
+                    {/* WhatsApp Details (Now only Number is visible) */}
                     <h2 className='text-lg font-semibold text-gc-secondary mt-6 border-t border-gc-border pt-4'>Private Contact Details</h2>
-                    <p className='text-xs text-gray-500 -mt-4'>Only visible to authenticated members on your profile.</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <p className='text-xs text-gray-500 -mt-4'>Only visible to authenticated members. The WhatsApp link will be auto-generated.</p>
+                    <div className="grid grid-cols-1">
                          <div>
-                            <label className="block text-gray-300 mb-1 flex items-center space-x-1"><FiPhone /> <span>WhatsApp Number</span></label>
+                            <label className="block text-gray-300 mb-1 flex items-center space-x-1"><FiPhone /> <span>WhatsApp Number (e.g., +23480...)</span></label>
                             <input type="text" name="whatsappNumber" value={formData.whatsappNumber} onChange={handleChange} className={inputClass} placeholder="+234..." />
                         </div>
-                         <div>
-                            <label className="block text-gray-300 mb-1 flex items-center space-x-1"><FiGlobe /> <span>WhatsApp Group/Convo Link</span></label>
-                            <input type="url" name="whatsappConvoLink" value={formData.whatsappConvoLink} onChange={handleChange} className={inputClass} placeholder="https://chat.whatsapp.com/..." />
-                        </div>
+                         {/* 🏆 FIX: Removed the separate Convo Link input field */}
                     </div>
 
 
